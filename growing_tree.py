@@ -122,34 +122,39 @@ class GrowingTree:
                 self.cells[x][y].visited = False
         self.forty_two
 
-    def find_path(self, entry: Cell, exit: Cell) -> None:
+    def find_path(self, entry: Cell, exit: Cell) -> bool:
         """Find the path from entry to exit"""
         entry.visited = True
         direction: str = ''
-        while not(entry.x == exit.x and entry.y == exit.y):
-            if (entry.value & 1 == 0
-                and not self.cells[entry.x - 1][entry.y].visited):
-                    direction = 'N'
-                    print(direction)
-                    self.find_path(self.cells[entry.x - 1][entry.y], exit)
-            elif (entry.value & 2 == 0
-                  and not self.cells[entry.x][entry.y + 1].visited):
-                    direction = 'E'
-                    print(direction)
-                    self.find_path(self.cells[entry.x][entry.y + 1], exit)
-            elif (entry.value & 4 == 0 
-                  and not self.cells[entry.x + 1][entry.y].visited):
-                    direction = 'S'
-                    print(direction)
-                    self.find_path(self.cells[entry.x + 1][entry.y], exit)
-            elif (entry.value & 8 == 0 
-                  and not self.cells[entry.x][entry.y - 1].visited):
-                    direction = 'W'
-                    print(direction)
-                    self.find_path(self.cells[entry.x][entry.y - 1], exit)
-            else:
-                break
-            self.path += direction
+        if (entry.x == exit.x and entry.y == exit.y):
+            return True
+    
+        if (entry.value & 1 == 0
+            and not self.cells[entry.x - 1][entry.y].visited):
+                direction = 'N'
+                self.path += direction
+                if self.find_path(self.cells[entry.x - 1][entry.y], exit):
+                    return True
+        if (entry.value & 2 == 0
+                and not self.cells[entry.x][entry.y + 1].visited):
+                direction = 'E'
+                self.path += direction
+                if self.find_path(self.cells[entry.x][entry.y + 1], exit):
+                    return True
+        if (entry.value & 4 == 0 
+                and not self.cells[entry.x + 1][entry.y].visited):
+                direction = 'S'
+                self.path += direction
+                if self.find_path(self.cells[entry.x + 1][entry.y], exit):
+                    return True
+        if (entry.value & 8 == 0 
+                and not self.cells[entry.x][entry.y - 1].visited):
+                direction = 'W'
+                self.path += direction
+                if self.find_path(self.cells[entry.x][entry.y - 1], exit):
+                    return True
+        self.path = self.path[:-1]
+        return False
 
     def display(self) -> None:
     

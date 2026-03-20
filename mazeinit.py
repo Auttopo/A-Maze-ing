@@ -9,7 +9,7 @@ class MazeConfigError(Exception):
 
 class MazeInit():
 
-    def __call__(self) -> None:
+    def __call__(self) -> dict[str, str | int | bool]:
         return self.config
 
     def __init__(self, file_name: str) -> None:
@@ -21,18 +21,18 @@ class MazeInit():
                 f"Configuration file name '{file_name}' do not exist"
                 f", or the file is inaccessible")
         with open(file_name, "r") as file:
-            data: str | list[str] = file.read()
-            data = data.split("\n")
-            for i, line in enumerate(data, 1):
+            full_data: str = file.read()
+            lines: list[str] = full_data.split("\n")
+            for i, line in enumerate(lines, 1):
                 self.line_parser(line, i)
         self.keys_validation()
         self.data_validation()
 
-    def line_parser(self, data: list[str], i: int) -> None:
-        if data == "" or data[0] == "#":
+    def line_parser(self, line: str, i: int) -> None:
+        if line == "" or line[0] == "#":
             return
         try:
-            data = data.split("=")
+            data: list[str] | str = line.split("=")
             self.config.update({data[0]: data[1]})
         except Exception:
             raise MazeConfigError(f"line '{i}' not correclty set: {data}"
@@ -40,6 +40,16 @@ class MazeInit():
 
     def keys_validation(self) -> None:
         trace: str = ""
+        valid_data = {
+            "WIDTH", "HEIGHT", "ENTRY",
+            "EXIT", "OUTPUT_FILE", "OUTPUT_FILE_OVERRIDE",
+            "PERFECT", "SEED"
+            }
+        for elem in self.config:
+            if elem not in valid_data:
+                trace += "unknow key in the config file : "\
+                    + str(elem) + "\n"
+
         if "WIDTH" not in self.config:
             trace += "WIDTH not set\n"
         if "HEIGHT" not in self.config:
@@ -58,9 +68,9 @@ class MazeInit():
             raise MazeConfigError(f"\n{trace[:len(trace) - 1]}")
 
     @staticmethod
-    def value_check(data: str, name: str) -> None:
+    def value_check(data: str, name: str) -> int:
         try:
-            data = int(data)
+            data: int = int(data)
             if data < 0:
                 raise
         except Exception:
@@ -123,3 +133,8 @@ class MazeInit():
                 self()["PERFECT"] = False
             case _:
                 raise MazeConfigError("PERFECT unknow value")
+        if self()["SEED"] != "Random":
+            self.value_check(
+                self()["SEED"],
+                "SEED need to set as 'Random', or"
+            )

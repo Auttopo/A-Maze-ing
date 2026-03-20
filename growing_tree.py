@@ -1,5 +1,6 @@
 import random
 from typing import Any
+import 
 
 class Cell:
     """Specific class for defining each cell of the maze"""
@@ -31,6 +32,7 @@ class GrowingTree:
         self.entry = self.cells[x_entry][y_entry]
         self.exit = self.cells[x_exit][y_exit]
         self.find_path(self.entry, self.exit)
+        self.fill_the_file()
 
     def forty_two (self) -> None:
         """Initialize each cells of the 42 symbol"""
@@ -155,6 +157,18 @@ class GrowingTree:
                     return True
         self.path = self.path[:-1]
         return False
+
+    def fill_the_file(self) -> None:
+        text = open(self.output, 'w')
+        for x in range(0, self.rows):
+            for y in range(0, self.columns):
+                text.write(str(hex(self.cells[x][y].value).lstrip('0x').upper()))
+            text.write('\n')
+        
+        text.write(f'\n{self.entry.x},{self.entry.y}\n')
+        text.write(f'{self.exit.x},{self.exit.y}\n')
+        text.write(self.path)
+        text.close
 
     def display(self) -> None:
     

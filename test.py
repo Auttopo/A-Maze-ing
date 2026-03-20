@@ -15,7 +15,7 @@ def main() -> None:
     #     row = [element[i].value for i in range(0, len(element))]
     #     print(f'{row}\n')
 
-    tree.display()
+    # tree.display()
     print(tree.path)
 
 if __name__ == '__main__':

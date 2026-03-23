@@ -138,3 +138,8 @@ class MazeInit():
                 self()["SEED"],
                 "SEED need to set as 'Random', or"
             )
+        if self()["WIDTH"] < 11:
+            raise MazeConfigError("width can't be lower than 11")
+        if self()["HEIGHT"] < 9:
+            raise MazeConfigError("height can't be lower than 9")
+

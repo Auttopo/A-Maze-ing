@@ -1,4 +1,6 @@
+
 from mazeinit import MazeInit, MazeConfigError
+from mazegeneration import MazeGenerator
 import sys
 import traceback
 
@@ -11,3 +13,6 @@ if __name__ == "__main__":
         print("An error occured :", e)
         if len(sys.argv) > 2 and sys.argv[2] == "traceback":
             traceback.print_exc()
+        sys.exit()
+
+    maze = MazeGenerator.UnperfectMaze(data())

@@ -1,6 +1,6 @@
 import random
 from typing import Any
-import 
+from mlx import Mlx
 
 class Cell:
     """Specific class for defining each cell of the maze"""
@@ -15,6 +15,7 @@ class Cell:
 class GrowingTree:
     """Class for creating a perfect maze"""
     def __init__(self, dic: dict[str, Any]) -> None:
+        """Allow you to have the output file directly"""
         self.rows: int = dic['HEIGHT']
         self.columns: int = dic['WIDTH']
         x_entry, y_entry = dic['ENTRY']
@@ -100,29 +101,26 @@ class GrowingTree:
                 target.visited = True
                 cells_visited.append(target)
                 if active.x - target.x == 1:
-                    # case du dessous
                     active.value -= 1
                     target.value -= 4
                 elif active.x - target.x == -1:
-                    # case du dessus
                     active.value -= 4
                     target.value -= 1
                 elif active.y - target.y == 1:
-                    # case de gauche
                     active.value -= 8
                     target.value -= 2
                 elif active.y - target.y == -1:
-                    # case de droite
                     active.value -= 2
                     target.value -= 8
             else:
                 cells_visited.remove(active)
 
     def no_cell_visited(self) -> None:
+        """Put every cells as no visited except 42 symbol"""
         for x in range(0, self.rows):
             for y in range(0, self.columns):
                 self.cells[x][y].visited = False
-        self.forty_two
+        self.forty_two()
 
     def find_path(self, entry: Cell, exit: Cell) -> bool:
         """Find the path from entry to exit"""
@@ -159,6 +157,7 @@ class GrowingTree:
         return False
 
     def fill_the_file(self) -> None:
+        """Fill the output file"""
         text = open(self.output, 'w')
         for x in range(0, self.rows):
             for y in range(0, self.columns):
@@ -168,10 +167,10 @@ class GrowingTree:
         text.write(f'\n{self.entry.x},{self.entry.y}\n')
         text.write(f'{self.exit.x},{self.exit.y}\n')
         text.write(self.path)
-        text.close
+        text.close()
 
     def display(self) -> None:
-    
+        """display a provisory maze"""
         for x in range(0, self.rows):
             top = ""
             for y in range(0, self.columns):
@@ -187,3 +186,125 @@ class GrowingTree:
         
         # Ligne du bas
         print("+" + "---+" * self.columns)
+    
+    def get_the_list(self) -> list[list[int]]:
+        list_int: list[list[int]] = []
+        list_int = (
+        [[self.cells[x][y].value for y in range(self.columns)] for x in range(self.rows)]
+        )
+        return list_int
+
+
+class DisplayMaze:
+    """Class for diplay the maze with mlx"""
+    def __init__(self, cells: list[list]) -> None:
+        self.cells = cells
+        self.rows = len(cells)
+        self.column = len(cells[0])
+        self.m = Mlx()
+        self.mlx_ptr = self.m.mlx_init()
+        (ret, w, h) = self.m.mlx_get_screen_size(self.mlx_ptr)
+        self.w_wdw = int(w * 0.5)
+        self.h_wdw = int(h * 0.5)
+        self.wall_size = 0.1
+        self.h_menu = 22
+        self.calculate_img_values()
+        self.win_ptr = self.m.mlx_new_window(self.mlx_ptr, self.w_wdw, self.h_wdw, "toto")
+        self.img = self.m.mlx_new_image(self.mlx_ptr, self.w_img, self.h_img)
+        (self.data, self.bit_per_pixel, self.size_line, the_format) = (
+            self.m.mlx_get_data_addr(self.img)
+        )
+        self.m.mlx_clear_window(self.mlx_ptr, self.win_ptr)
+        
+        self.display()
+
+    def calculate_img_values(self) -> None:
+        """Calculate the value of a cell in pixel"""
+        self.w_cell = int(self.w_wdw / (self.column + 2))
+        self.w_img = self.w_cell * self.column
+        self.w_offset = int((self.w_wdw - (self.w_img)) / 2)
+        
+        self.h_cell = int((self.h_wdw - self.h_menu) / (self.rows + 2))
+        self.h_img = self.h_cell * self.rows
+        self.h_offset = int((self.h_wdw - self.h_menu - self.h_img) / 2)
+
+    def mymouse(self, button, x, y, mystuff):
+        print(f"Got mouse event! button {button} at {x},{y}.")
+        
+
+    def mykey(self, keynum, mystuff):
+        # print(f"Got key {keynum}, and got my stuff back:")
+        # print(mystuff)
+        if keynum == 32:
+            self.m.mlx_mouse_hook(self.win_ptr, None, None)
+        elif keynum == 65307:
+            self.m.mlx_release(self.mlx_ptr)
+            self.m.mlx_loop_exit(self.mlx_ptr)
+    
+    def gere_close(self, dummy):
+        self.m.mlx_loop_exit(self.mlx_ptr)
+
+    def draw_walls(self, x: int, y: int, color: tuple[int, int, int, int]) -> None:
+        
+        cell = self.cells[x][y]
+        if cell & 1 == 1:
+            for i in range(0, self.w_cell):
+                for j in range(0, int(self.h_cell * self.wall_size)):
+                    offset = (
+                        (x * self.h_cell + j) * self.size_line + 
+                        (y * self.w_cell + i) * (self.bit_per_pixel // 8)
+                    )
+                    for k in range(0, 4):
+                        self.data[offset + k] = color[k]
+
+        if cell & 2 == 2:
+            for i in range(int(self.w_cell * (1 - self.wall_size)), self.w_cell):
+                for j in range(0, self.h_cell):
+                    offset = (
+                        (x * self.h_cell + j) * self.size_line + 
+                        (y * self.w_cell + i) * (self.bit_per_pixel // 8)
+                    )
+                    for k in range(0, 4):
+                        self.data[offset + k] = color[k]
+            
+        if cell & 4 == 4:
+            for i in range(0, self.w_cell):
+                for j in range(int(self.h_cell * (1 - self.wall_size)), self.h_cell):
+                    offset = (
+                        (x * self.h_cell + j) * self.size_line + 
+                        (y * self.w_cell + i) * (self.bit_per_pixel // 8)
+                    )
+                    for k in range(0, 4):
+                        self.data[offset + k] = color[k]
+            
+        if cell & 8 == 8:
+            for i in range(0, int(self.w_cell * self.wall_size)):
+                for j in range(0, self.h_cell):
+                    offset = (
+                        (x * self.h_cell + j) * self.size_line + 
+                        (y * self.w_cell + i) * (self.bit_per_pixel // 8)
+                    )
+                    for k in range(0, 4):
+                        self.data[offset + k] = color[k]
+                    
+    
+    def draw(self, _) -> None:
+        """Draw the image in the buffer"""
+             
+        self.m.mlx_put_image_to_window(self.mlx_ptr, self.win_ptr, self.img, self.w_offset, self.h_offset)
+        self.m.mlx_string_put(self.mlx_ptr, self.win_ptr, 0, 0, 255, "Hyello PyMlx!")
+        self.m.mlx_sync(self.mlx_ptr, 2, self.win_ptr)
+        
+    def display(self) -> None:
+        
+        for x in range(0, self.rows):
+            for y in range(0, self.column):
+                self.draw_walls(x, y, (255, 255, 255, 255))
+        
+        self.m.mlx_expose_hook(self.win_ptr, self.draw, None)
+            
+        stuff = [1, 2]
+        self.m.mlx_mouse_hook(self.win_ptr, self.mymouse, None)
+        self.m.mlx_key_hook(self.win_ptr, self.mykey, stuff)
+        self.m.mlx_hook(self.win_ptr, 33, 0, self.gere_close, None)
+        self.m.mlx_loop(self.mlx_ptr)

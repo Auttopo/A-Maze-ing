@@ -44,13 +44,21 @@ class MazeGenerator:
                 self.array[config["HEIGHT"] - 1][i] += 0b0100
        
 
-            self.generate("CLASSIC")
+            self.generate("UNPERFECT")
          #   self.generate("CIRCLE")
 
-        # self.show()
-            self.show_pretty()
+            self.show()
+
+            road: str = ""
+            try:
+                road = self.resolve()
+            except Exception as e:
+                print(e)
             print("time exec", self.tt.total_seconds())
-            print(self.error_count)
+            self.show_pretty()
+            if road:
+                print("SUCCESS !:")
+                print(road)
         # self.create_file()
 
         def create_file(self) -> None:
@@ -76,12 +84,15 @@ class MazeGenerator:
                     print(str("{0:x}".format(num)).capitalize(), end=" ")
                 print("")
 
-        def show_pretty(self) -> None:
+        def show_pretty(self, values: bool = False) -> None:
 
+            i: int
+            j: int = 0
             for elem in self.array:
                 line1 = ""
                 line2 = ""
                 line3 = ""
+                i = 0
                 for num in elem:
                     s1 = [" ", " ", " ", " "]
                     s2 = [" ", " ", " ", " "]
@@ -106,6 +117,10 @@ class MazeGenerator:
                     if bin(num % 2) == bin(1):
                         s2[1] = "X"
                         s2[2] = "X"
+                    
+                    if values:
+                        s2[2] = str(self.agents[j][i] % 10)
+                        s2[1] = str(self.agents[j][i] // 10 % 10)
 
                     def list_in_str(data: list[str]) -> str:
                         out = ""
@@ -116,9 +131,11 @@ class MazeGenerator:
                     line1 += list_in_str(s1)
                     line2 += list_in_str(s2)
                     line3 += list_in_str(s3)
+                    i += 1
                 print(line1)
                 print(line2)
                 print(line3)
+                j += 1
                 
         def draw_cube(self) -> None:
             self.prime_list[self.pos_y][self.pos_x] = False
@@ -183,8 +200,7 @@ class MazeGenerator:
                 return
 
             try:
-                if  self.get_north(shift_x, shift_y + 1) != bin(1):
-
+                if self.get_north(shift_x, shift_y + 1) != bin(1) and  self.get_south(shift_x, shift_y) != bin(1):
                     self.array[self.pos_y + shift_y ][self.pos_x + shift_x] += 0b0100
                     self.array[self.pos_y + shift_y + 1][self.pos_x + shift_x] += 0b001
             except Exception:
@@ -195,7 +211,7 @@ class MazeGenerator:
                 return
 
             try:
-                if  self.get_east(shift_x, shift_y) != bin(1):
+                if self.get_east(shift_x, shift_y) != bin(1) and self.get_west(shift_x + 1, shift_y) != bin(1):
                     self.array[self.pos_y + shift_y][self.pos_x + shift_x] += 0b0010
                     self.array[self.pos_y + shift_y][self.pos_x + 1 + shift_x] += 0b1000  
             except Exception:
@@ -288,48 +304,99 @@ class MazeGenerator:
                     self.array[sender_y][sender_x] -= 0b1000
 
 
-        def resolve(self) -> None:
+        def resolve(self) -> str:
 
-            visited: list[list[int]] = [[False for _ in range(self.config["WIDTH"])] for _ in range(self.config["HEIGHT"])]
-            targets: dict[typle[int, int]] = {}
-            wait_list: set[tuple[int, int]] = {(self.pos_x, self.pos_y)}
-            tree: set[tuple[int, int]]
-            while(wait_list):
-               
-                tree = {wait_list.pop()}
-                
-                while(tree):
+            agents: list[list[int]] = [[0 for _ in range(self.config["WIDTH"])] for _ in range(self.config["HEIGHT"])]
 
-                    new_branch = random.choice(list(tree))
-                    tree.remove(new_branch)
-                    self.pos_x, self.pos_y = new_branch
-                    visited[self.pos_y][self.pos_x] = True
+            tree: list[tuple[int, int]]
+            dest_x: int
+            dest_y: int
 
-                    if new_branch in targets:
-                        targets.pop(new_branch)
+            self.pos_x, self.pos_y = self.config["ENTRY"]
 
-                    if self.prime_list[self.pos_y - 1][self.pos_x] and not visited[self.pos_y - 1][ self.pos_x]:
-                        targets.update({(self.pos_x, self.pos_y - 1) : new_branch}) 
-                        if self.get_north() == bin(0) and (self.pos_x, self.pos_y - 1) not in tree:
-                            tree.add((self.pos_x, self.pos_y - 1))
+            tree = [(self.pos_x, self.pos_y)]
+            agents[self.pos_y][self.pos_x] = 1
+            temp_i = 0
+            while(tree):
 
-                    if self.prime_list[self.pos_y][ self.pos_x + 1] and not visited[self.pos_y][ self.pos_x + 1]:
-                        targets.update({(self.pos_x + 1, self.pos_y) : new_branch})
-                        if self.get_east() == bin(0) and (self.pos_x + 1, self.pos_y)not in tree:
-                            tree.add((self.pos_x + 1, self.pos_y))
+                self.pos_x, self.pos_y = tree.pop(0)
+                new_value = agents[self.pos_y][self.pos_x] + 1
 
-                    if self.prime_list[self.pos_y + 1][ self.pos_x] and not visited[self.pos_y + 1][ self.pos_x]:
-                        targets.update({(self.pos_x, self.pos_y + 1) : new_branch})
-                        if self.get_south() == bin(0) and (self.pos_x, self.pos_y + 1) not in tree:
-                            tree.add((self.pos_x, self.pos_y + 1))
+                if self.get_north() == bin(0):
+                    if new_value < agents[self.pos_y - 1][self.pos_x] or agents[self.pos_y - 1][self.pos_x] == 0:
+                        agents[self.pos_y - 1][self.pos_x] = new_value
+                        tree.append((self.pos_x, self.pos_y - 1))
 
-                    if self.prime_list[self.pos_y][ self.pos_x - 1] and not visited[self.pos_y][ self.pos_x - 1]:
-                        targets.update({(self.pos_x - 1, self.pos_y) : new_branch})
-                        if self.get_west() == bin(0) and (self.pos_x - 1, self.pos_y) not in tree:
-                            tree.add((self.pos_x - 1, self.pos_y))
+                if self.get_east() == bin(0):
+                    if new_value < agents[self.pos_y][self.pos_x + 1] or agents[self.pos_y][self.pos_x + 1] == 0:
+                        agents[self.pos_y][self.pos_x + 1] = new_value
+                        tree.append((self.pos_x + 1, self.pos_y))
 
-                wait_list = {(x, y) for x, y in wait_list if not visited[y][x]}
-            
+                if self.get_south() == bin(0):
+                    if new_value < agents[self.pos_y + 1][self.pos_x] or agents[self.pos_y + 1][self.pos_x] == 0:
+                        agents[self.pos_y + 1][self.pos_x] = new_value
+                        tree.append((self.pos_x, self.pos_y + 1))
+
+                if self.get_west() == bin(0):
+                    if new_value < agents[self.pos_y][self.pos_x - 1] or agents[self.pos_y][self.pos_x - 1] == 0:
+                        agents[self.pos_y][self.pos_x - 1] = new_value
+                        tree.append((self.pos_x - 1, self.pos_y))
+                temp_i += 1
+
+
+            self.pos_x, self.pos_y = self.config["EXIT"]
+
+            temp_i = 0
+            road: list[str] = []
+            value: float = agents[self.pos_y][self.pos_x]
+            while(value != 1):
+
+                value = agents[self.pos_y][self.pos_x]
+                shortest: str = ""
+
+                if self.get_north() == bin(0):
+                    if value > agents[self.pos_y - 1][self.pos_x]:
+                        value = agents[self.pos_y - 1][self.pos_x]
+                        shortest = "N"
+
+                if self.get_east() == bin(0):
+                    if value > agents[self.pos_y][self.pos_x + 1]:
+                        value = agents[self.pos_y][self.pos_x + 1]
+                        shortest = "E"
+
+                if self.get_south() == bin(0):
+                    if value > agents[self.pos_y + 1][self.pos_x]:
+                        value = agents[self.pos_y + 1][self.pos_x]
+                        shortest = "S"
+
+                if self.get_west() == bin(0):
+                    if value > agents[self.pos_y][self.pos_x - 1]:
+                        value = agents[self.pos_y][self.pos_x - 1]
+                        shortest = "W"
+
+                match shortest:
+                    case "N":
+                        self.pos_y -= 1
+                    case "E":
+                        self.pos_x += 1
+                    case "S":
+                        self.pos_y += 1
+                    case "W":
+                        self.pos_x -= 1
+                    case _:
+                        for elem in agents:
+                            print(elem)
+                            self.agents = agents
+                        raise Exception(f"Impossible road occured: {''.join(road)}")
+
+                road.append(shortest)
+            for elem in agents:
+                print(elem)
+            return "".join(road)
+
+            for elem in agents:
+                print(elem)
+            #print(shortest)
 
         def area_visitor(self) -> None:
            
@@ -337,6 +404,7 @@ class MazeGenerator:
             targets: dict[typle[int, int]] = {}
             wait_list: set[tuple[int, int]] = {(self.pos_x, self.pos_y)}
             tree: set[tuple[int, int]]
+
             while(wait_list):
                
                 tree = {wait_list.pop()}
@@ -348,27 +416,28 @@ class MazeGenerator:
                     self.pos_x, self.pos_y = new_branch
                     visited[self.pos_y][self.pos_x] = True
 
+
                     if new_branch in targets:
                         targets.pop(new_branch)
 
                     if self.prime_list[self.pos_y - 1][self.pos_x] and not visited[self.pos_y - 1][ self.pos_x]:
                         targets.update({(self.pos_x, self.pos_y - 1) : new_branch}) 
-                        if self.get_north() == bin(0) and (self.pos_x, self.pos_y - 1) not in tree:
+                        if self.get_north() == bin(0):
                             tree.add((self.pos_x, self.pos_y - 1))
 
                     if self.prime_list[self.pos_y][ self.pos_x + 1] and not visited[self.pos_y][ self.pos_x + 1]:
                         targets.update({(self.pos_x + 1, self.pos_y) : new_branch})
-                        if self.get_east() == bin(0) and (self.pos_x + 1, self.pos_y)not in tree:
+                        if self.get_east() == bin(0):
                             tree.add((self.pos_x + 1, self.pos_y))
 
                     if self.prime_list[self.pos_y + 1][ self.pos_x] and not visited[self.pos_y + 1][ self.pos_x]:
                         targets.update({(self.pos_x, self.pos_y + 1) : new_branch})
-                        if self.get_south() == bin(0) and (self.pos_x, self.pos_y + 1) not in tree:
+                        if self.get_south() == bin(0):
                             tree.add((self.pos_x, self.pos_y + 1))
 
                     if self.prime_list[self.pos_y][ self.pos_x - 1] and not visited[self.pos_y][ self.pos_x - 1]:
                         targets.update({(self.pos_x - 1, self.pos_y) : new_branch})
-                        if self.get_west() == bin(0) and (self.pos_x - 1, self.pos_y) not in tree:
+                        if self.get_west() == bin(0):
                             tree.add((self.pos_x - 1, self.pos_y))
 
                 wait_list = {(x, y) for x, y in wait_list if not visited[y][x]}
@@ -407,6 +476,19 @@ class MazeGenerator:
                     elem[i] = 0b1111
                     i += 1
            
+        def generate_unperfect(self) -> None:
+
+            for self.pos_y in range(self.config["HEIGHT"]):
+                self.pos_x = 0
+                while self.pos_x < self.config["WIDTH"]:
+                    if self.pos_x % 2 == 0:
+                        self.draw_y()
+                    if self.pos_y % 2 == 0:
+                        self.draw_x()
+                    self.pos_x += 1
+                print(self.pos_y)
+
+
         def generate_circles(self) -> None:
 
             start_x: int = int(self.config["WIDTH"] / 2)
@@ -473,8 +555,10 @@ class MazeGenerator:
                     self.draw_cross()
                 case "CLASSIC":
                     self.generate_classic()
-            self.set_42_walls()
+                case "UNPERFECT":
+                    self.generate_unperfect()
 
+            self.set_42_walls()
             start = datetime.now()
             self.maze_explorator()
             self.tt = datetime.now() - start

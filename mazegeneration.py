@@ -44,37 +44,49 @@ class MazeGenerator:
                 self.array[config["HEIGHT"] - 1][i] += 0b0100
        
 
-            self.generate("UNPERFECT")
-         #   self.generate("CIRCLE")
+         #   self.generate("CLASSIC")
+            self.generate("CIRCLE")
 
             self.show()
+            self.show_pretty()
 
             road: str = ""
             try:
-                road = self.resolve()
+                road: str = self.resolve()
             except Exception as e:
-                print(e)
+                pass
+                print("RESOLVE FAILED", e)
             print("time exec", self.tt.total_seconds())
-            self.show_pretty()
             if road:
                 print("SUCCESS !:")
                 print(road)
-        # self.create_file()
 
-        def create_file(self) -> None:
+            self.create_file(road)
+
+        def create_file(self, road: str) -> None:
                 
             with open(self.config["OUTPUT_FILE"], "w") as file:
+
                 file.write(self.create_string())
+                file.write("\n")
+
+                x, y = self.config["ENTRY"]
+                file.write(f"{x},{y}\n")
+                x, y = self.config["EXIT"]
+                file.write(f"{x},{y}\n")
+
+                file.write(road)
+
 
 
 
         def create_string(self) -> str:
-            out: str = ""
+            out: list[str] = []
             for elem in self.array:
                 for num in elem:
-                    out += str("{0:x}".format(num)).capitalize()
-                out+= "\n"
-            return out
+                    out.append(str("{0:x}".format(num)).capitalize())
+                out.append("\n")
+            return "".join(out)
 
 
 
@@ -195,6 +207,23 @@ class MazeGenerator:
             #return bin(self.array[self.pos_y + shift_y][self.pos_x + shift_x] & 1 << 0)
             return bin(int(int(int(self.array[self.pos_y + shift_y][self.pos_x + shift_x] / 2) / 2) /2) % 2)
     
+        @staticmethod
+        def fast_get_north(array: list[int, int], shift_x: int = 0, shift_y: int = 0) -> str:
+            return bin((array[shift_y][shift_x]) >> 0 & 1)
+
+        @staticmethod
+        def fast_get_east(array: list[int, int], shift_x: int = 0, shift_y: int = 0) -> str:
+            return bin((array[shift_y][shift_x]) >> 1 & 1)
+
+        @staticmethod
+        def fast_get_south(array: list[int, int], shift_x: int = 0, shift_y: int = 0) -> str:
+            return bin((array[shift_y][shift_x]) >> 2 & 1)
+
+        @staticmethod
+        def fast_get_west(array: list[int, int], shift_x: int = 0, shift_y: int = 0) -> str:
+            return bin((array[shift_y][shift_x]) >> 3 & 1)
+
+
         def draw_x(self, shift_x:int = 0, shift_y: int = 0) -> None:
             if self.pos_x + shift_x < 0 or self.pos_y + shift_y < 0:
                 return
@@ -278,8 +307,8 @@ class MazeGenerator:
                 self.pos_x += 1
             return True
 
-
-        def destroy_wall(self, targets: tuple[tuple[int, int], tuple[int, int]]) -> None:
+        @staticmethod
+        def destroy_wall(array: list[list[int]], targets: tuple[tuple[int, int], tuple[int, int]]) -> None:
 
             target, sender = targets
             target_x, target_y = target
@@ -287,21 +316,21 @@ class MazeGenerator:
             if target_x == sender_x:
                 if target_y > sender_y:
                     # target at down
-                    self.array[target_y][target_x] -= 0b0001
-                    self.array[sender_y][sender_x] -= 0b0100
+                    array[target_y][target_x] -= 0b0001
+                    array[sender_y][sender_x] -= 0b0100
                 else:
                     # target at up
-                    self.array[target_y][target_x] -= 0b0100
-                    self.array[sender_y][sender_x] -= 0b0001
+                    array[target_y][target_x] -= 0b0100
+                    array[sender_y][sender_x] -= 0b0001
             else:
                 if target_x > sender_x:
                     # target at right
-                    self.array[target_y][target_x] -= 0b1000
-                    self.array[sender_y][sender_x] -= 0b0010
+                    array[target_y][target_x] -= 0b1000
+                    array[sender_y][sender_x] -= 0b0010
                 else:
                     # target at left
-                    self.array[target_y][target_x] -= 0b0010
-                    self.array[sender_y][sender_x] -= 0b1000
+                    array[target_y][target_x] -= 0b0010
+                    array[sender_y][sender_x] -= 0b1000
 
 
         def resolve(self) -> str:
@@ -357,31 +386,31 @@ class MazeGenerator:
                 if self.get_north() == bin(0):
                     if value > agents[self.pos_y - 1][self.pos_x]:
                         value = agents[self.pos_y - 1][self.pos_x]
-                        shortest = "N"
+                        shortest = "S"
 
                 if self.get_east() == bin(0):
                     if value > agents[self.pos_y][self.pos_x + 1]:
                         value = agents[self.pos_y][self.pos_x + 1]
-                        shortest = "E"
+                        shortest = "W"
 
                 if self.get_south() == bin(0):
                     if value > agents[self.pos_y + 1][self.pos_x]:
                         value = agents[self.pos_y + 1][self.pos_x]
-                        shortest = "S"
+                        shortest = "N"
 
                 if self.get_west() == bin(0):
                     if value > agents[self.pos_y][self.pos_x - 1]:
                         value = agents[self.pos_y][self.pos_x - 1]
-                        shortest = "W"
+                        shortest = "E"
 
                 match shortest:
-                    case "N":
-                        self.pos_y -= 1
-                    case "E":
-                        self.pos_x += 1
                     case "S":
-                        self.pos_y += 1
+                        self.pos_y -= 1
                     case "W":
+                        self.pos_x += 1
+                    case "N":
+                        self.pos_y += 1
+                    case "E":
                         self.pos_x -= 1
                     case _:
                         for elem in agents:
@@ -390,84 +419,155 @@ class MazeGenerator:
                         raise Exception(f"Impossible road occured: {''.join(road)}")
 
                 road.append(shortest)
-            for elem in agents:
-                print(elem)
+          #  for elem in agents:
+          #      print(elem)
             return "".join(road)
 
-            for elem in agents:
-                print(elem)
-            #print(shortest)
+        def setup_agents(self, nbr: int) -> list[list[int]]:
+            agents: list[list[int]] = [[0 for _ in range(self.config["WIDTH"])] for _ in range(self.config["HEIGHT"])]
 
-        def area_visitor(self) -> None:
-           
-            visited: list[list[int]] = [[False for _ in range(self.config["WIDTH"])] for _ in range(self.config["HEIGHT"])]
+            possibles: list[typle[int, int]] = [
+                    (0,0),
+                    (self.config["WIDTH"] - 1, 0),
+                    (0, self.config["HEIGHT"] - 1),
+                    (self.config["WIDTH"] - 1, self.config["HEIGHT"] - 1),
+                    (int(self.config["WIDTH"] / 2) - 3 + 5,
+                    (int(self.config["HEIGHT"] / 2) - 2 + 1))
+                    ]
+            random.shuffle(possibles)
+            start: set[tuples[int, int]] = set()
+            for i,( x, y) in enumerate(possibles, start = 1):
+                agents[y][x] = i
+                start.add((x, y))
+                if i == nbr:
+                    break
+            return (agents, start)
+
+        def maze_explorator(self, max_pairs: int) -> None:
+
+            if not 0 < max_pairs < 6:
+                raise Exception("Agents in the maze is max 5, min 1")
+            
+            visited: list[list[bool]] = [[False for _ in range(self.config["WIDTH"])] for _ in range(self.config["HEIGHT"])]
+            agents: list[list[int]]
             targets: dict[typle[int, int]] = {}
-            wait_list: set[tuple[int, int]] = {(self.pos_x, self.pos_y)}
             tree: set[tuple[int, int]]
+            agents, tree = self.setup_agents(max_pairs)
+            prime_list = self.prime_list
+            array = self.array
 
-            while(wait_list):
+            get_north = MazeGenerator.UnperfectMaze.fast_get_north
+            get_east = MazeGenerator.UnperfectMaze.fast_get_east
+            get_south = MazeGenerator.UnperfectMaze.fast_get_south
+            get_west = MazeGenerator.UnperfectMaze.fast_get_west
+            destroy_wall = MazeGenerator.UnperfectMaze.destroy_wall
+
+
+            # OPTI LIST : stocker fonctin : destroy_wall ...
+            # STOCKER CELLULE AVANT UTILISATION
+          #  tree: set[tuple[int, int]]
+
+            pair_end: int = max_pairs
+            pairs: set[set[int]] = set()
+            while(tree):
                
-                tree = {wait_list.pop()}
-                
                 while(tree):
 
                     new_branch = random.choice(list(tree))
                     tree.remove(new_branch)
-                    self.pos_x, self.pos_y = new_branch
-                    visited[self.pos_y][self.pos_x] = True
-
+                    pos_x, pos_y = new_branch
+                    visited[pos_y][pos_x] = True
 
                     if new_branch in targets:
                         targets.pop(new_branch)
+                    
+                    agent_value = agents[pos_y][pos_x]
+    
+                    if prime_list[pos_y - 1][pos_x]:
+                        if pair_end and {target_value := agents[pos_y - 1][pos_x], agent_value} not in pairs:
+                            if target_value and target_value != agent_value:
+                                destroy_wall(array, ((pos_x, pos_y - 1) , new_branch))
+                                print("del:", ((pos_x, pos_y - 1) , new_branch))
+                                print(agent_value, target_value)
+                                if (pos_x, pos_y - 1) in targets.keys():
+                                    raise Exception("Something trange happened")
+                                    #targets.pop((pos_x, pos_y - 1))
+                                pairs.add(frozenset({agent_value, target_value}))
+                                pair_end -= 1
 
-                    if self.prime_list[self.pos_y - 1][self.pos_x] and not visited[self.pos_y - 1][ self.pos_x]:
-                        targets.update({(self.pos_x, self.pos_y - 1) : new_branch}) 
-                        if self.get_north() == bin(0):
-                            tree.add((self.pos_x, self.pos_y - 1))
+                        if not visited[pos_y - 1][ pos_x]:
+                            targets.update({(pos_x, pos_y - 1) : new_branch})
+                            if get_north(array, pos_x, pos_y) == bin(0):
+                                agents[pos_y - 1][pos_x] = agent_value
+                                tree.add((pos_x, pos_y - 1))
 
-                    if self.prime_list[self.pos_y][ self.pos_x + 1] and not visited[self.pos_y][ self.pos_x + 1]:
-                        targets.update({(self.pos_x + 1, self.pos_y) : new_branch})
-                        if self.get_east() == bin(0):
-                            tree.add((self.pos_x + 1, self.pos_y))
+                    if prime_list[pos_y][ pos_x + 1]:
+                        if pair_end and {target_value := agents[pos_y][pos_x + 1], agent_value} not in pairs:
+                            if target_value and target_value != agent_value:
+                                destroy_wall(array, ((pos_x + 1, pos_y) , new_branch))
+                                print("del:", ((pos_x, pos_y - 1) , new_branch))
+                                print(agent_value, target_value)
+                                if (pos_x + 1, pos_y) in targets.keys():
+                                    raise Exception("Something trange happened")
+                                    #targets.pop((pos_x + 1, pos_y))
+                                pairs.add(frozenset({agent_value, target_value}))
+                                pair_end -= 1
 
-                    if self.prime_list[self.pos_y + 1][ self.pos_x] and not visited[self.pos_y + 1][ self.pos_x]:
-                        targets.update({(self.pos_x, self.pos_y + 1) : new_branch})
-                        if self.get_south() == bin(0):
-                            tree.add((self.pos_x, self.pos_y + 1))
+                        if not visited[pos_y][ pos_x + 1]:
+                            targets.update({(pos_x + 1, pos_y) : new_branch})
+                            if get_east(array, pos_x, pos_y) == bin(0):
+                                agents[pos_y][pos_x + 1] = agent_value
+                                tree.add((pos_x + 1, pos_y))
 
-                    if self.prime_list[self.pos_y][ self.pos_x - 1] and not visited[self.pos_y][ self.pos_x - 1]:
-                        targets.update({(self.pos_x - 1, self.pos_y) : new_branch})
-                        if self.get_west() == bin(0):
-                            tree.add((self.pos_x - 1, self.pos_y))
+                    if prime_list[pos_y + 1][ pos_x]:
+                        if pair_end and {target_value := agents[pos_y + 1][pos_x], agent_value} not in pairs:
+                            if target_value and target_value != agent_value:
+                                destroy_wall(array, ((pos_x, pos_y + 1) , new_branch))
+                                print("del:", ((pos_x, pos_y - 1) , new_branch))
+                                print(agent_value, target_value)
+                                if (pos_x, pos_y + 1) in targets.keys():
+                                    raise Exception("Something trange happened")
+                                    #targets.pop((pos_x, pos_y + 1))
+                                pairs.add(frozenset({agent_value, target_value}))
+                                pair_end -= 1
 
-                wait_list = {(x, y) for x, y in wait_list if not visited[y][x]}
+                        if not visited[pos_y + 1][ pos_x]:
+                            targets.update({(pos_x, pos_y + 1) : new_branch})
+                            if get_south(array, pos_x, pos_y) == bin(0):
+                                agents[pos_y + 1][pos_x] = agent_value
+                                tree.add((pos_x, pos_y + 1))
 
-                if len(wait_list) < 1:
+                    if prime_list[pos_y][ pos_x - 1]:
+                        if pair_end and {target_value := agents[pos_y][pos_x - 1], agent_value} not in pairs:
+                            if target_value and target_value != agent_value:
+                                destroy_wall(array, ((pos_x - 1, pos_y) , new_branch))
+                                print("del:", ((pos_x, pos_y - 1) , new_branch))
+                                print(agent_value, target_value)
+                                if (pos_x - 1, pos_y) in targets.keys():
+                                    raise Exception("Something trange happened")
+                                    #targets.pop((pos_x - 1, pos_y))
+                                pairs.add(frozenset({agent_value, target_value}))
+                                pair_end -= 1
+                                
+                        if not visited[pos_y][ pos_x - 1]:
+                            targets.update({(pos_x - 1, pos_y) : new_branch})
+                            if get_west(array, pos_x, pos_y) == bin(0):
+                                agents[pos_y][pos_x - 1] = agent_value
+                                tree.add((pos_x - 1, pos_y))
 
-                    if len(targets) > 1:
-                        sample = random.sample(list(targets.items()), 2)
-                        targets.pop(sample[0][0])
-                        wait_list.update({sample[0][0]})
-                        self.destroy_wall(sample[0])
-
-                        targets.pop(sample[1][0])
-                        wait_list.update({sample[1][0]})
-                        self.destroy_wall(sample[1])
-                    elif len(targets) == 1:
-                        sample = random.sample(list(targets.items()), 1)
-
-                        targets.pop(sample[0][0])
-                        wait_list.update({sample[0][0]})
-                        self.destroy_wall(sample[0])
+                if len(targets) > 0:
+                    sample = random.sample(list(targets.items()), 1)[0]
+                    targets.pop(sample[0])
+                    tree = {sample[0]}
+                    agents[sample[0][1]][sample[0][0]] = agents[sample[1][1]][sample[1][0]]
+                    destroy_wall(array, sample)
+          #  print(pair_end)
+          #  print(pairs)
+          #  print("AGENTS:")
+          #  for elem in agents:
+          #      print(elem)
             return
         
-        
-
-        def maze_explorator(self) -> None:
-            self.pos_x = int(self.config["WIDTH"] / 2) - 3 + 5
-            self.pos_y = int(self.config["HEIGHT"] / 2) - 2 + 1
-            
-            self.area_visitor()
             
         def generate_classic(self) -> None:
             for elem in self.array:
@@ -553,14 +653,20 @@ class MazeGenerator:
                 case "CIRCLE":
                     self.generate_circles()
                     self.draw_cross()
+                    self.set_42_walls()
+                    start = datetime.now()
+                    self.maze_explorator(1)
                 case "CLASSIC":
                     self.generate_classic()
+                    self.set_42_walls()
+                    start = datetime.now()
+                    self.maze_explorator(1)
                 case "UNPERFECT":
                     self.generate_unperfect()
+                    self.set_42_walls()
+                    start = datetime.now()
+                    self.maze_explorator(4)
 
-            self.set_42_walls()
-            start = datetime.now()
-            self.maze_explorator()
             self.tt = datetime.now() - start
 
             

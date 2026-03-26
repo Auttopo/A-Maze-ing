@@ -211,7 +211,7 @@ class DisplayMaze:
         (ret, w, h) = self.m.mlx_get_screen_size(self.mlx_ptr)
         self.w_wdw = int(w * 0.5)
         self.h_wdw = int(h * 0.5)
-        self.wall_size = 0.1
+        self.wall_size = 0.2
         self.h_menu = 22
         self.calculate_img_values()
         self.win_ptr = self.m.mlx_new_window(self.mlx_ptr, self.w_wdw, self.h_wdw, "toto")
@@ -220,20 +220,23 @@ class DisplayMaze:
             self.m.mlx_get_data_addr(self.img)
         )
         self.m.mlx_clear_window(self.mlx_ptr, self.win_ptr)
-        
+        print(f'w_wall: {self.w_wall}')
+        print(f'h_wall: {self.h_wall}')
+
         self.display()
 
     def calculate_img_values(self) -> None:
         """Calculate the value of a cell in pixel"""
-        self.w_cell = int(self.w_wdw / (self.column + 2))
-        self.w_img = self.w_cell * self.column
-        self.w_offset = int((self.w_wdw - (self.w_img)) / 2)
-        print(f'cell: {self.w_cell}')
-        print(f'img: {self.w_img}')
-        print(f'offset: {self.w_offset}')
-        self.h_cell = int((self.h_wdw - self.h_menu) / (self.rows + 2))
-        self.h_img = self.h_cell * self.rows
-        self.h_offset = int((self.h_wdw - self.h_menu - self.h_img) / 2)
+        self.w_img = self.w_wdw
+        self.w_cell = int(self.w_img / (self.column + ((self.column + 1) * self.wall_size)))
+        self.w_wall = int(self.w_cell * self.wall_size)
+
+        self.h_img = self.h_wdw - self.h_menu
+        self.h_cell = int(self.h_img / (self.rows + ((self.rows + 1) * self.wall_size)))
+        self.h_wall = int(self.h_cell * self.wall_size)
+
+        self.w_offset = int((self.w_wdw - (self.column * (self.w_cell + self.w_wall)) - self.w_wall) / 2)
+        self.h_offset = int((self.h_wdw - self.h_menu - (self.rows * (self.h_cell + self.h_wall) + self.h_wall)) / 2)
 
     def mymouse(self, button, x, y, mystuff):
         print(f"Got mouse event! button {button} at {x},{y}.")
@@ -253,70 +256,63 @@ class DisplayMaze:
 
     def draw_walls(self, x: int, y: int, color: tuple[int, int, int, int]) -> None:
         cell = self.cells[x][y]
-        if cell & 1 == 1:
-            if x == 0:
-                for i in range(0, self.w_cell):
-                    for j in range(0, int(self.h_cell * self.wall_size)):
-                        offset = (
-                            (x * self.h_cell + j) * self.size_line + 
-                            (y * self.w_cell + i) * (self.bit_per_pixel // 8)
-                        )
-                        for k in range(0, 4):
-                            self.data[offset + k] = color[k]
-            else:
-                for i in range(-int(self.wall_size * self.w_cell), self.w_cell):
-                    for j in range(0, int(self.h_cell * self.wall_size)):
-                        offset = (
-                            (x * self.h_cell + j) * self.size_line + 
-                            (y * self.w_cell + i) * (self.bit_per_pixel // 8)
-                        )
-                        for k in range(0, 4):
-                            self.data[offset + k] = color[k]
 
-        if cell & 2 == 2:
-            for i in range(int(self.w_cell * (1 - self.wall_size)), self.w_cell):
-                for j in range(0, self.h_cell):
+        if cell & 1 == 1:
+            for i in range(0, self.w_cell + 2 * self.w_wall):
+                for j in range(0, self.h_wall):
                     offset = (
-                        (x * self.h_cell + j) * self.size_line + 
-                        (y * self.w_cell + i) * (self.bit_per_pixel // 8)
+                        (x * (self.h_cell + self.h_wall) + j) * self.size_line + 
+                        (y * (self.w_cell + self.w_wall) + i) * (self.bit_per_pixel // 8)
                     )
                     for k in range(0, 4):
                         self.data[offset + k] = color[k]
-        if y == 0:
-            for i in range(0, int(self.w_cell * self.wall_size)):
-                        for j in range(0, self.h_cell):
-                            offset = (
-                                (x * self.h_cell + j) * self.size_line + 
-                                (y * self.w_cell + i) * (self.bit_per_pixel // 8)
-                            )
-                            for k in range(0, 4):
-                                self.data[offset + k] = color[k]
+
+        if cell & 8 == 8:
+            for i in range(0, self.w_wall):
+                for j in range(0, self.h_wall + self.h_cell):
+                    offset = (
+                        (x * (self.h_cell + self.h_wall) + j) * self.size_line + 
+                        (y * (self.w_cell + self.w_wall) + i) * (self.bit_per_pixel // 8)
+                    )
+                    for k in range(0, 4):
+                        self.data[offset + k] = color[k]
+
+        if y == self.column - 1:
+            for i in range(self.w_cell + self.w_wall, self.w_cell + (self.w_wall * 2)):
+                for j in range(0, self.h_wall + self.h_cell):
+                    offset = (
+                        (x * (self.h_cell + self.h_wall) + j) * self.size_line + 
+                        (y * (self.w_cell + self.w_wall) + i) * (self.bit_per_pixel // 8)
+                    )
+                    for k in range(0, 4):
+                        self.data[offset + k] = color[k]
+
         if x == self.rows - 1:
-            for i in range(0, self.w_cell):
-                        for j in range(int((1 - self.wall_size) * self.h_cell), self.h_cell):
-                            offset = (
-                                (x * self.h_cell + j) * self.size_line + 
-                                (y * self.w_cell + i) * (self.bit_per_pixel // 8)
-                            )
-                            for k in range(0, 4):
-                                self.data[offset + k] = color[k]
+            for i in range(0, self.w_cell + 2 * self.w_wall):
+                for j in range(self.h_cell + self.h_wall, self.h_cell + (2 * self.h_wall)):
+                    offset = (
+                        (x * (self.h_cell + self.h_wall) + j) * self.size_line + 
+                        (y * (self.w_cell + self.w_wall) + i) * (self.bit_per_pixel // 8)
+                    )
+                    for k in range(0, 4):
+                        self.data[offset + k] = color[k]
 
     def color_forty_two(self, x: int, y: int, color: tuple[int, int, int, int]) -> None:
-        for i in range(int(self.wall_size * self.w_cell), int(self.w_cell * (1 - self.wall_size))):
-                    for j in range(int(self.wall_size * self.h_cell), int(self.h_cell * (1 - self.wall_size))):
+        for i in range(self.w_wall, self.w_cell):
+                    for j in range(self.h_wall, self.h_cell):
                         offset = (
-                            (x * self.h_cell + j) * self.size_line + 
-                            (y * self.w_cell + i) * (self.bit_per_pixel // 8)
+                        (x * (self.h_cell + self.h_wall) + j) * self.size_line + 
+                        (y * (self.w_cell + self.w_wall) + i) * (self.bit_per_pixel // 8)
                         )
                         for k in range(0, 4):
                             self.data[offset + k] = color[k]
 
     def color_a_case(self, x: int, y: int, color: tuple[int, int, int, int]) -> None:
-        for i in range(int(self.w_cell * self.wall_size), int(self.w_cell * (1 - self.wall_size))):
-                    for j in range(int(self.wall_size * self.h_cell), self.h_cell):
+        for i in range(self.w_wall, self.w_cell +self.w_wall):
+                    for j in range(self.h_wall, self.h_cell + self.h_wall):
                         offset = (
-                            (x * self.h_cell + j) * self.size_line + 
-                            (y * self.w_cell + i) * (self.bit_per_pixel // 8)
+                        (x * (self.h_cell + self.h_wall) + j) * self.size_line + 
+                        (y * (self.w_cell + self.w_wall) + i) * (self.bit_per_pixel // 8)
                         )
                         for k in range(0, 4):
                             self.data[offset + k] = color[k]
@@ -343,7 +339,7 @@ class DisplayMaze:
         """Draw the image in the buffer"""
              
         self.m.mlx_put_image_to_window(self.mlx_ptr, self.win_ptr, self.img, self.w_offset, self.h_offset)
-        self.m.mlx_string_put(self.mlx_ptr, self.win_ptr, 0, 0, 255, "Hyello PyMlx!")
+        self.m.mlx_string_put(self.mlx_ptr, self.win_ptr, 0, self.h_wdw - self.h_menu, 255, "Hyello PyMlx!")
         self.m.mlx_sync(self.mlx_ptr, 2, self.win_ptr)
         
     def display(self) -> None:
@@ -351,7 +347,6 @@ class DisplayMaze:
         for x in range(0, self.rows):
             for y in range(0, self.column):
                 self.draw_walls(x, y, wall_color)
-        # self.draw_outline(wall_color)
         self.draw_forty_two(wall_color)
         self.color_a_case(0,0,(200,200,200,200))
         self.color_a_case(1,self.column - 1,(200,200,200,200))

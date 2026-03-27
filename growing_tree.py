@@ -202,11 +202,16 @@ class GrowingTree:
 
 class DisplayMaze:
     """Class for diplay the maze with mlx"""
-    def __init__(
-            self, 
-            cells: list[list], path: str, 
-            screen: tuple[Any, Any, Any] = (None, None, None)
-            ) -> None:
+    def __init__(self, cells: list[list], path: str) -> None:
+        """Initiliaze the maze's values, and defaults colors"""
+        self.initialize_maze_settings(cells, path)
+        self.wall_color = (255, 255, 255, 255)
+        self.path_color = (100, 150, 110, 255)
+        self.entry_color = (0, 215, 0, 200)
+        self.exit_color = (0, 0, 215, 200)
+
+    def initialize_maze_settings(self, cells: list[list], path: str) -> None:
+        """Initialize maze's settings"""
         self.cells = cells
         self.rows = len(cells)
         self.column = len(cells[0])
@@ -214,33 +219,29 @@ class DisplayMaze:
         self.exit = (self.rows - 1, self.column - 1)
         self.path = path
         self.path_visible = False
-        self.wall_color = (255, 255, 255, 255)
-        self.path_color = (100, 150, 100, 255)
-        
-        self.m, self.mlx_ptr, self.win_ptr = screen
-        if not self.m:
-            self.m = Mlx()
-        if not self.mlx_ptr:
-            self.mlx_ptr = self.m.mlx_init()
+
+    def intialize_display_settings(self) -> None:
+        """Initialize mlx and window's settings"""
+        self.m = Mlx()
+        self.mlx_ptr = self.m.mlx_init()
         self.calculate_img_values()
-                
+        
         try:
             if self.wdw_size >= 1:
                 raise Exception("The maze is to big to be displayed")
-            if not self.win_ptr:
-                self.win_ptr = (
-                    self.m.mlx_new_window(self.mlx_ptr, self.w_wdw, self.h_wdw, "toto")
-                    )
+            self.win_ptr = (
+                self.m.mlx_new_window(self.mlx_ptr, self.w_wdw, self.h_wdw, "toto")
+                )
             self.img = self.m.mlx_new_image(self.mlx_ptr, self.w_img, self.h_img)
             (self.data, self.bit_per_pixel, self.size_line, the_format) = (
                 self.m.mlx_get_data_addr(self.img)
             )
-            self.display()
+            self.draw()
         except Exception as e:
             print(e)
 
     def calculate_img_values(self) -> None:
-        """Calculate the value of a cell in pixel"""
+        """Calculate the value of a cell and of a wall in pixel"""
 
         (ret, self.w, self.h) = self.m.mlx_get_screen_size(self.mlx_ptr)
         self.wall_size = 0.2
@@ -264,8 +265,9 @@ class DisplayMaze:
      
         self.w_offset = int((self.w_wdw - (self.column * (self.w_cell + self.wall)) - self.wall) / 2)
         self.h_offset = int((self.h_wdw - self.h_menu - (self.rows * (self.h_cell + self.wall) + self.wall)) / 2)
-       
+    
     def gere_close(self, dummy):
+        """For closing the window"""
         self.m.mlx_loop_exit(self.mlx_ptr)
 
     def draw_walls(self, color: tuple[int, int, int, int]) -> None:
@@ -314,6 +316,7 @@ class DisplayMaze:
                                 self.data[offset + k] = color[k]
 
     def color_forty_two(self, x: int, y: int, color: tuple[int, int, int, int]) -> None:
+        """Color forty-two's symbol to the same color of walls"""
         for i in range(self.wall, self.w_cell):
                     for j in range(self.wall, self.h_cell):
                         offset = (
@@ -324,7 +327,8 @@ class DisplayMaze:
                             self.data[offset + k] = color[k]
 
     def color_a_case(self, x: int, y: int, color: tuple[int, int, int, int]) -> None:
-        for i in range(self.wall, self.w_cell +self.wall):
+        """Color the inside of a cell"""
+        for i in range(self.wall, self.w_cell + self.wall):
                     for j in range(self.wall, self.h_cell + self.wall):
                         offset = (
                         (x * (self.h_cell + self.wall) + j) * self.size_line + 
@@ -334,6 +338,7 @@ class DisplayMaze:
                             self.data[offset + k] = color[k]
 
     def draw_forty_two(self, color: tuple[int, int, int, int]) -> None:
+        """Draw the forty-two symbol's walls"""
         x:int = int(self.rows / 2)
         y:int = int(self.column / 2)
         for i in range(1, 4):
@@ -352,6 +357,7 @@ class DisplayMaze:
         self.color_forty_two(x - 2, y - 1, color)
 
     def draw_the_path(self, color: tuple[int, int, int, int]) -> None:
+        """Draw or undraw the path between the entry to the exit"""
         x = self.entry[0]
         y = self.entry[1]
         if self.path_visible:
@@ -374,56 +380,76 @@ class DisplayMaze:
                 self.color_a_case(x, y - 1, color)
                 y -= 1
 
+    def clean_image(self) -> None:
+        """Reintialize the image to a black backscreen"""
+        color = (0, 0, 0, 255)
+        for x in range(self.h_img):
+            for y in range(self.w_img):
+                offset = (
+                        x * self.size_line + y * (self.bit_per_pixel // 8)
+                        )
+                for k in range(0, 4):
+                    self.data[offset + k] = color[k]
+
     def mymouse(self, button, x, y, mystuff) -> None:
+        """Manage operations related to mouse click in the window"""
         print(f"Got mouse event! button {button} at {x},{y}.")    
 
     def mykey(self, keynum, mystuff) -> None:
+        """Manages some operations related to key activation"""
         # print(f"Got key {keynum}, and got my stuff back:")
         # print(mystuff)
         if keynum == 32:
             self.m.mlx_mouse_hook(self.win_ptr, None, None)
+
         elif keynum == 65307 or keynum == 39: #key escape or 4
             self.m.mlx_loop_exit(self.mlx_ptr)
 
         elif keynum == 38: #key 1
-            
             self.regenerate = True
             self.m.mlx_loop_exit(self.mlx_ptr)
             
         elif keynum == 233: #key2
             self.draw_the_path(self.path_color)
-            self.m.mlx_expose_hook(self.win_ptr, self.draw, None)
-            self.draw(None)
+            self.display(None)
 
         elif keynum == 34: #key 3
-            self.m.mlx_string_put(self.mlx_ptr, self.win_ptr, int(self.w_wdw / 2), int(self.h_wdw / 2), 255, "Coucou!")
-            # self.m.mlx_sync(self.mlx_ptr, 2, self.win_ptr)
-    
-    def draw(self, _) -> None:
-        """Draw the image in the buffer"""
-        
-        self.m.mlx_clear_window(self.mlx_ptr, self.win_ptr)  
+            self.wall_color = (random.randint(0, 255), random.randint(0, 255), random.randint(0, 255), 255)
+            if self.path_visible:
+                self.path_visible = False
+            else:
+                self.path_visible = True
+            self.draw()
+                
+    def display(self, _) -> None:
+        """Display the image in the window"""
         self.m.mlx_put_image_to_window(self.mlx_ptr, self.win_ptr, self.img, self.w_offset, self.h_offset)
         self.m.mlx_sync(self.mlx_ptr, 2, self.win_ptr)
         
-    def display(self) -> None:
+    def draw(self) -> None:
+        """Draw in image's buffer"""
         self.regenerate = False
+        self.clean_image()
         self.draw_walls(self.wall_color)
         self.draw_forty_two(self.wall_color)
-        self.color_a_case(self.entry[0], self.entry[1] ,(0, 255, 0, 200))
-        self.color_a_case(self.exit[0], self.exit[1],(0, 0, 255, 200))
+        self.color_a_case(self.entry[0], self.entry[1] ,self.entry_color)
+        self.color_a_case(self.exit[0], self.exit[1],self.exit_color)
         self.draw_the_path(self.path_color)
             
-        stuff = [1, 2]
         self.m.mlx_mouse_hook(self.win_ptr, self.mymouse, None)
-        self.m.mlx_key_hook(self.win_ptr, self.mykey, stuff)
+        self.m.mlx_key_hook(self.win_ptr, self.mykey, None)
         self.m.mlx_hook(self.win_ptr, 33, 0, self.gere_close, None)
-        self.draw(None)
-        self.m.mlx_expose_hook(self.win_ptr, self.draw, None)
+        self.display(None)
+
         self.m.mlx_loop(self.mlx_ptr)
 
         if self.regenerate:
             self.m.mlx_destroy_image(self.mlx_ptr, self.img)
+            self.data = None
+            self.img = self.m.mlx_new_image(self.mlx_ptr, self.w_img, self.h_img)
+            (self.data, self.bit_per_pixel, self.size_line, the_format) = (
+                self.m.mlx_get_data_addr(self.img)
+                )
             dic: dict[str, Any]= {
                 'WIDTH': self.column,
                 'HEIGHT': self.rows,
@@ -432,4 +458,5 @@ class DisplayMaze:
                 'OUTPUT_FILE': 'result.txt'
             }
             maze = GrowingTree(dic)
-            DisplayMaze(maze.get_the_list(), maze.path, (self.m, self.mlx_ptr, self.win_ptr))
+            self.initialize_maze_settings(maze.get_the_list(), maze.path)
+            self.draw()

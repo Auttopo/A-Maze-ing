@@ -18,8 +18,12 @@ class GrowingTree:
         """Allow you to have the output file directly"""
         self.rows: int = dic['HEIGHT']
         self.columns: int = dic['WIDTH']
-        x_entry, y_entry = dic['ENTRY']
-        x_exit, y_exit = dic['EXIT']
+        self.x_entry: int
+        self.y_entry: int
+        self.x_exit: int
+        self.y_exit: int
+        self.x_entry, self.y_entry = dic['ENTRY']
+        self.x_exit, self.y_exit = dic['EXIT']
         self.output: str = dic['OUTPUT_FILE']
         self.path: str = ''
         self.cells: list[list[Cell]] = []
@@ -30,8 +34,8 @@ class GrowingTree:
         self.forty_two()
         self.build_maze()
         self.no_cell_visited()
-        self.entry = self.cells[x_entry][y_entry]
-        self.exit = self.cells[x_exit][y_exit]
+        self.entry = self.cells[self.x_entry][self.y_entry]
+        self.exit = self.cells[self.x_exit][self.y_exit]
         self.find_path(self.entry, self.exit)
         self.fill_the_file()
 
@@ -202,21 +206,34 @@ class GrowingTree:
 
 class DisplayMaze:
     """Class for diplay the maze with mlx"""
-    def __init__(self, cells: list[list], path: str) -> None:
+    def __init__(self, 
+                 cells: list[list], 
+                 path: str, 
+                 entry: tuple[int, int], 
+                 exit: tuple[int, int]) -> None:
         """Initiliaze the maze's values, and defaults colors"""
-        self.initialize_maze_settings(cells, path)
-        self.wall_color = (255, 255, 255, 255)
+        self.initialize_maze_settings(cells, path, entry, exit)
+        self.wall_color = (255, 255, 255, 220)
         self.path_color = (100, 150, 110, 255)
         self.entry_color = (0, 215, 0, 200)
         self.exit_color = (0, 0, 215, 200)
+        
+        self.wall_size = 0.2
+        self.wdw_percent = 0.4
+        self.h_menu = 22
+        self.printable = True
 
-    def initialize_maze_settings(self, cells: list[list], path: str) -> None:
+    def initialize_maze_settings(self, 
+                                 cells: list[list], 
+                                 path: str, 
+                                 entry: tuple[int, int], 
+                                 exit: tuple[int, int]) -> None:
         """Initialize maze's settings"""
         self.cells = cells
         self.rows = len(cells)
         self.column = len(cells[0])
-        self.entry = (0, 0)
-        self.exit = (self.rows - 1, self.column - 1)
+        self.entry = entry
+        self.exit = exit
         self.path = path
         self.path_visible = False
 
@@ -225,10 +242,10 @@ class DisplayMaze:
         self.m = Mlx()
         self.mlx_ptr = self.m.mlx_init()
         self.calculate_img_values()
-        
+
         try:
-            if self.wdw_size >= 1:
-                raise Exception("The maze is to big to be displayed")
+            if not self.printable:
+                raise Exception("The maze can't be displayed, not readable or too big")
             self.win_ptr = (
                 self.m.mlx_new_window(self.mlx_ptr, self.w_wdw, self.h_wdw, "toto")
                 )
@@ -236,37 +253,63 @@ class DisplayMaze:
             (self.data, self.bit_per_pixel, self.size_line, the_format) = (
                 self.m.mlx_get_data_addr(self.img)
             )
+            self.menu_settings()
             self.draw()
         except Exception as e:
             print(e)
 
     def calculate_img_values(self) -> None:
         """Calculate the value of a cell and of a wall in pixel"""
-
         (ret, self.w, self.h) = self.m.mlx_get_screen_size(self.mlx_ptr)
-        self.wall_size = 0.2
-        self.wdw_size = 0.4
-        self.h_menu = 22
+        self.h_cell = 0
+        self.w_cell = 0
         self.wall = 0
-        
-        while self.wall < 1:
-            self.w_wdw = int(self.w * self.wdw_size)
-            self.h_wdw = int(self.h * self.wdw_size)
+        wdw_size = self.wdw_percent
 
-            self.w_img = self.w_wdw
-            self.w_cell = int(self.w_img / (self.column + ((self.column + 1) * self.wall_size)))
+        while self.h_cell < 5 or self.w_cell < 5 or self.wall < 1:
+            self.w_wdw = int(self.w * wdw_size)
+            self.h_wdw = int(self.h * wdw_size)
+
+            self.w_cell = int(self.w_wdw / (self.column + ((self.column + 1) * self.wall_size)))
             self.wall = int(self.w_cell * self.wall_size)
+            self.h_cell = int(((self.h_wdw - self.h_menu) - ((self.column + 1) * self.wall))/ self.rows)
 
-            self.h_img = self.h_wdw - self.h_menu
-            self.h_cell = int((self.h_img - ((self.column + 1) * self.wall))/ self.rows)
-            self.wall = self.wall
+            wdw_size += 0.05
+            
+        # if (wdw_size > 1 or abs(1 - (self.w_cell / self.h_cell)) > 0.97):
+        #     self.printable = False
+        #     pass
 
-            self.wdw_size += 0.05
-     
-        self.w_offset = int((self.w_wdw - (self.column * (self.w_cell + self.wall)) - self.wall) / 2)
-        self.h_offset = int((self.h_wdw - self.h_menu - (self.rows * (self.h_cell + self.wall) + self.wall)) / 2)
+        self.w_img = (self.column * (self.w_cell + self.wall) + self.wall)
+        self.h_img = (self.rows * (self.h_cell + self.wall) + self.wall)
+        self.w_wdw = self.w_img + 20
+        self.h_wdw = self.h_img + 20 + self.h_menu
+        self.w_offset = 10
+        self.h_offset = 10
     
-    def gere_close(self, dummy):
+    def menu_settings(self) -> None:
+        """Create and print the menu in the window"""
+        single_char = 6
+        h_menu = self.h_wdw - self.h_menu
+        color = 0xFFFFFF
+        options = [
+            '1: Regenerate',
+            '2: Show/Hide path',
+            '3: Wall color',
+            '4: Exit'
+        ]
+        space_menu = int(
+            (self.w_wdw - (single_char * sum([len(element) for element in options]))) / 
+            (len(options) + 1)
+        )
+        for i in range(0, len(options)):
+            if not i == 0:
+                position = (i + 1) * space_menu + single_char * sum([len(element) for element in options[:i]]) 
+            else:
+                position = space_menu
+            self.m.mlx_string_put(self.mlx_ptr, self.win_ptr, position, h_menu, color, options[i])
+
+    def gere_close(self, _):
         """For closing the window"""
         self.m.mlx_loop_exit(self.mlx_ptr)
 
@@ -458,5 +501,5 @@ class DisplayMaze:
                 'OUTPUT_FILE': 'result.txt'
             }
             maze = GrowingTree(dic)
-            self.initialize_maze_settings(maze.get_the_list(), maze.path)
+            self.initialize_maze_settings(maze.get_the_list(), maze.path, self.entry, self.exit)
             self.draw()

@@ -43,7 +43,7 @@ class MazeInit():
         valid_data = {
             "WIDTH", "HEIGHT", "ENTRY",
             "EXIT", "OUTPUT_FILE", "OUTPUT_FILE_OVERRIDE",
-            "PERFECT", "SEED"
+            "PERFECT", "SEED", "SHAPE"
             }
         for elem in self.config:
             if elem not in valid_data:
@@ -134,7 +134,7 @@ class MazeInit():
             case _:
                 raise MazeConfigError("PERFECT unknow value")
         if self()["SEED"] != "Random":
-            self.value_check(
+            self()["SEED"] = self.value_check(
                 self()["SEED"],
                 "SEED need to set as 'Random', or"
             )
@@ -142,4 +142,8 @@ class MazeInit():
             raise MazeConfigError("width can't be lower than 11")
         if self()["HEIGHT"] < 9:
             raise MazeConfigError("height can't be lower than 9")
+        if self()["SHAPE"] not in {"Classic", "Circle", "Square"}:
+            raise MazeConfigError("SHAPE unknow type, possibilities : Classic ; Circle ; Square")
+
+
 

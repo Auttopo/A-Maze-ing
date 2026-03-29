@@ -294,7 +294,7 @@ class DisplayMaze:
         self.wall = 0
         wdw_size = self.wdw_percent
 
-        while self.cell_size < 5 or self.wall < 1:
+        while self.cell_size < 10 or self.wall < 2:
             self.w_wdw = int(self.w * wdw_size)
             self.h_wdw = int(self.h * wdw_size)
 
@@ -576,3 +576,7 @@ class DisplayMaze:
                 maze.get_the_list(), maze.path, self.entry, self.exit
             )
             self.draw()
+
+        self.m.mlx_destroy_image(self.mlx_ptr, self.img)
+        self.m.mlx_destroy_window(self.mlx_ptr, self.win_ptr)
+        self.m.mlx_release(self.mlx_ptr)

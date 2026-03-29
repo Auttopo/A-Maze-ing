@@ -290,42 +290,37 @@ class DisplayMaze:
     def calculate_img_values(self) -> None:
         """Calculate the value of a cell and of a wall in pixel"""
         ret, self.w, self.h = self.m.mlx_get_screen_size(self.mlx_ptr)
-        self.h_cell = 0
-        self.w_cell = 0
+        self.cell_size = 0
         self.wall = 0
         wdw_size = self.wdw_percent
 
-        while self.h_cell < 5 or self.w_cell < 5 or self.wall < 1:
+        while self.cell_size < 5 or self.wall < 1:
             self.w_wdw = int(self.w * wdw_size)
             self.h_wdw = int(self.h * wdw_size)
 
-            self.w_cell = int(
+            w_cell = int(
                 self.w_wdw /
                 (self.column + ((self.column + 1) * self.wall_size))
             )
-            # self.h_cell = int(
-            #     (self.h_wdw - self.h_menu) /
-            #     (self.rows + ((self.rows + 1) * self.wall_size))
-            # )
-            # if self.w_cell > self.h_cell:
-            #     self.cell_size = self.h_cell
-            # else:
-            #     self.cell_size = self.w_cell
-
-            self.wall = int(self.w_cell * self.wall_size)
-            self.h_cell = int(
-                ((self.h_wdw - self.h_menu) - ((self.column + 1) * self.wall))
-                / self.rows
+            h_cell = int(
+                (self.h_wdw - self.h_menu) /
+                (self.rows + ((self.rows + 1) * self.wall_size))
             )
 
+            if w_cell > h_cell:
+                self.cell_size = h_cell
+            else:
+                self.cell_size = w_cell
+
+            self.wall = int(self.cell_size * self.wall_size)
             wdw_size += 0.05
 
-        # if (wdw_size > 1 or abs(1 - (self.w_cell / self.h_cell)) > 0.97):
-        #     self.printable = False
-        #     pass
+        if (wdw_size > 1):
+            self.printable = False
+            pass
 
-        self.w_img = self.column * (self.w_cell + self.wall) + self.wall
-        self.h_img = self.rows * (self.h_cell + self.wall) + self.wall
+        self.w_img = self.column * (self.cell_size + self.wall) + self.wall
+        self.h_img = self.rows * (self.cell_size + self.wall) + self.wall
         self.w_wdw = self.w_img + 20
         self.h_wdw = self.h_img + 20 + self.h_menu
         self.w_offset = 10
@@ -368,12 +363,12 @@ class DisplayMaze:
             for y in range(0, self.column):
                 cell = self.cells[x][y]
                 if cell & 1 == 1:
-                    for i in range(0, self.w_cell + 2 * self.wall):
+                    for i in range(0, self.cell_size + 2 * self.wall):
                         for j in range(0, self.wall):
                             offset = (
-                                (x * (self.h_cell + self.wall) + j) *
+                                (x * (self.cell_size + self.wall) + j) *
                                 self.size_line +
-                                (y * (self.w_cell + self.wall) + i) *
+                                (y * (self.cell_size + self.wall) + i) *
                                 (self.bit_per_pixel // 8)
                                       )
                             for k in range(0, 4):
@@ -381,11 +376,11 @@ class DisplayMaze:
 
                 if cell & 8 == 8:
                     for i in range(0, self.wall):
-                        for j in range(0, self.wall + self.h_cell):
+                        for j in range(0, self.wall + self.cell_size):
                             offset = (
-                                (x * (self.h_cell + self.wall) + j) *
+                                (x * (self.cell_size + self.wall) + j) *
                                 self.size_line +
-                                (y * (self.w_cell + self.wall) + i) *
+                                (y * (self.cell_size + self.wall) + i) *
                                 (self.bit_per_pixel // 8)
                             )
                             for k in range(0, 4):
@@ -393,28 +388,28 @@ class DisplayMaze:
 
                 if y == self.column - 1:
                     for i in range(
-                        self.w_cell + self.wall, self.w_cell + (self.wall * 2)
+                        self.cell_size + self.wall, self.cell_size + (self.wall * 2)
                     ):
-                        for j in range(0, self.wall + self.h_cell):
+                        for j in range(0, self.wall + self.cell_size):
                             offset = (
-                                (x * (self.h_cell + self.wall) + j) *
+                                (x * (self.cell_size + self.wall) + j) *
                                 self.size_line +
-                                (y * (self.w_cell + self.wall) + i) *
+                                (y * (self.cell_size + self.wall) + i) *
                                 (self.bit_per_pixel // 8)
                                       )
                             for k in range(0, 4):
                                 self.data[offset + k] = color[k]
 
                 if x == self.rows - 1:
-                    for i in range(0, self.w_cell + 2 * self.wall):
+                    for i in range(0, self.cell_size + 2 * self.wall):
                         for j in range(
-                            self.h_cell + self.wall,
-                            self.h_cell + (2 * self.wall)
+                            self.cell_size + self.wall,
+                            self.cell_size + (2 * self.wall)
                         ):
                             offset = (
-                                (x * (self.h_cell + self.wall) + j) *
+                                (x * (self.cell_size + self.wall) + j) *
                                 self.size_line +
-                                (y * (self.w_cell + self.wall) + i) *
+                                (y * (self.cell_size + self.wall) + i) *
                                 (self.bit_per_pixel // 8)
                             )
                             for k in range(0, 4):
@@ -425,11 +420,11 @@ class DisplayMaze:
                         y: int,
                         color: tuple[int, int, int, int]) -> None:
         """Color forty-two's symbol to the same color of walls"""
-        for i in range(self.wall, self.w_cell):
-            for j in range(self.wall, self.h_cell):
+        for i in range(self.wall, self.cell_size):
+            for j in range(self.wall, self.cell_size):
                 offset = (
-                    (x * (self.h_cell + self.wall) + j) * self.size_line +
-                    (y * (self.w_cell + self.wall) + i) *
+                    (x * (self.cell_size + self.wall) + j) * self.size_line +
+                    (y * (self.cell_size + self.wall) + i) *
                     (self.bit_per_pixel // 8)
                     )
                 for k in range(0, 4):
@@ -440,11 +435,11 @@ class DisplayMaze:
                      y: int,
                      color: tuple[int, int, int, int]) -> None:
         """Color the inside of a cell"""
-        for i in range(self.wall, self.w_cell + self.wall):
-            for j in range(self.wall, self.h_cell + self.wall):
+        for i in range(self.wall, self.cell_size + self.wall):
+            for j in range(self.wall, self.cell_size + self.wall):
                 offset = (
-                    (x * (self.h_cell + self.wall) + j) * self.size_line +
-                    (y * (self.w_cell + self.wall) + i) *
+                    (x * (self.cell_size + self.wall) + j) * self.size_line +
+                    (y * (self.cell_size + self.wall) + i) *
                     (self.bit_per_pixel // 8)
                 )
                 for k in range(0, 4):

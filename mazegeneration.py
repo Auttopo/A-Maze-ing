@@ -195,7 +195,6 @@ class MazeGenerator:
             return bin((array[shift_y][shift_x]) >> 3 & 1)
 
 
-
         @func_timer("resolving")
         def resolve(self) -> str:
 

@@ -146,4 +146,3 @@ class MazeInit():
             raise MazeConfigError("SHAPE unknow type, possibilities : Classic ; Circle ; Square")
 
 
-

@@ -180,6 +180,9 @@ class GrowingTree:
         self.path = self.path[:-1]
         return False
 
+    
+
+
     def fill_the_file(self) -> None:
         """Fill the output file"""
         text = open(self.output, "w")
@@ -195,29 +198,11 @@ class GrowingTree:
         text.write(self.path)
         text.close()
 
-    def display(self) -> None:
-        """display a provisory maze"""
-        for x in range(0, self.rows):
-            top = ""
-            for y in range(0, self.columns):
-                top += "+" + ("   " if not self.cells[x][y].value & 1 else "---")
-            print(top + "+")
-
-            # Ligne du milieu
-            mid = ""
-            for y in range(self.columns):
-                mid += "|" if self.cells[x][y].value & 8 else " "
-                mid += "   "
-            print(mid + "|")
-
-        # Ligne du bas
-        print("+" + "---+" * self.columns)
-
     def get_the_list(self) -> list[list[int]]:
         list_int: list[list[int]] = []
         list_int = [
-            [self.cells[x][y].value for y in range(self.columns)]
-            for x in range(self.rows)
+            [self.cells[y][x].value for x in range(self.columns)]
+            for y in range(self.rows)
         ]
         return list_int
 
@@ -359,59 +344,59 @@ class DisplayMaze:
 
     def draw_walls(self, color: tuple[int, int, int, int]) -> None:
         """Draw the walls of the maze"""
-        for x in range(0, self.rows):
-            for y in range(0, self.column):
-                cell = self.cells[x][y]
+        for x in range(0, self.column):
+            for y in range(0, self.rows):
+                cell = self.cells[y][x]
                 if cell & 1 == 1:
                     for i in range(0, self.cell_size + 2 * self.wall):
                         for j in range(0, self.wall):
                             offset = (
-                                (x * (self.cell_size + self.wall) + j) *
-                                self.size_line +
-                                (y * (self.cell_size + self.wall) + i) *
-                                (self.bit_per_pixel // 8)
+                                (x * (self.cell_size + self.wall) + i) *
+                                (self.bit_per_pixel // 8) +
+                                (y * (self.cell_size + self.wall) + j) *
+                                self.size_line
                                       )
                             for k in range(0, 4):
                                 self.data[offset + k] = color[k]
 
                 if cell & 8 == 8:
                     for i in range(0, self.wall):
-                        for j in range(0, self.wall + self.cell_size):
+                        for j in range(0, self.cell_size + self.wall):
                             offset = (
-                                (x * (self.cell_size + self.wall) + j) *
-                                self.size_line +
-                                (y * (self.cell_size + self.wall) + i) *
-                                (self.bit_per_pixel // 8)
-                            )
+                                (x * (self.cell_size + self.wall) + i) *
+                                (self.bit_per_pixel // 8) +
+                                (y * (self.cell_size + self.wall) + j) *
+                                self.size_line
+                                      )
                             for k in range(0, 4):
                                 self.data[offset + k] = color[k]
 
-                if y == self.column - 1:
+                if x == self.column - 1:
                     for i in range(
                         self.cell_size + self.wall, self.cell_size + (self.wall * 2)
                     ):
                         for j in range(0, self.wall + self.cell_size):
                             offset = (
-                                (x * (self.cell_size + self.wall) + j) *
-                                self.size_line +
-                                (y * (self.cell_size + self.wall) + i) *
-                                (self.bit_per_pixel // 8)
+                                (x * (self.cell_size + self.wall) + i) *
+                                (self.bit_per_pixel // 8) +
+                                (y * (self.cell_size + self.wall) + j) *
+                                self.size_line
                                       )
                             for k in range(0, 4):
                                 self.data[offset + k] = color[k]
 
-                if x == self.rows - 1:
+                if y == self.rows - 1:
                     for i in range(0, self.cell_size + 2 * self.wall):
                         for j in range(
                             self.cell_size + self.wall,
                             self.cell_size + (2 * self.wall)
                         ):
                             offset = (
-                                (x * (self.cell_size + self.wall) + j) *
-                                self.size_line +
-                                (y * (self.cell_size + self.wall) + i) *
-                                (self.bit_per_pixel // 8)
-                            )
+                                (x * (self.cell_size + self.wall) + i) *
+                                (self.bit_per_pixel // 8) +
+                                (y * (self.cell_size + self.wall) + j) *
+                                self.size_line
+                                      )
                             for k in range(0, 4):
                                 self.data[offset + k] = color[k]
 
@@ -487,6 +472,8 @@ class DisplayMaze:
             elif i == "W":
                 self.color_a_case(x, y - 1, color)
                 y -= 1
+        self.display(None)
+
 
     def clean_image(self) -> None:
         """Reintialize the image to a black backscreen"""
@@ -496,6 +483,15 @@ class DisplayMaze:
                 offset = x * self.size_line + y * (self.bit_per_pixel // 8)
                 for k in range(0, 4):
                     self.data[offset + k] = color[k]
+
+    def guess_the_path(self) -> None:
+        """Try to find the path to the exit"""
+        if self.path_visible:
+            self.draw_the_path(self.path_color)
+        x = self.entry[0]
+        y = self.entry[1]
+        while not (x == self.exit[0] or self.exit[1]):
+            pass
 
     def mymouse(self, button, x, y, mystuff: Any) -> None:
         """Manage operations related to mouse click in the window"""
@@ -517,7 +513,6 @@ class DisplayMaze:
 
         elif keynum == 50 or keynum == 65433:
             self.draw_the_path(self.path_color)
-            self.display(None)
 
         elif keynum == 51 or keynum == 65435:
             self.wall_color = (
@@ -530,7 +525,12 @@ class DisplayMaze:
                 self.path_visible = False
             else:
                 self.path_visible = True
-            self.draw()
+            self.draw_walls(self.wall_color)
+            self.draw_forty_two(self.wall_color)
+            self.display(None)
+
+        elif keynum == 52 or keynum == 65433:
+            self.guess_the_path()
 
     def display(self, _: Any) -> None:
         """Display the image in the window"""
@@ -576,6 +576,7 @@ class DisplayMaze:
                 maze.get_the_list(), maze.path, self.entry, self.exit
             )
             self.draw()
+            return
 
         self.m.mlx_destroy_image(self.mlx_ptr, self.img)
         self.m.mlx_destroy_window(self.mlx_ptr, self.win_ptr)

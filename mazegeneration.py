@@ -100,7 +100,7 @@ class MazeGenerator:
 
 
         @func_timer("creating file")
-        def create_file(self, self.road: str) -> None:
+        def create_file(self, road: str) -> None:
                 
             with open(self.config["OUTPUT_FILE"], "w") as file:
 

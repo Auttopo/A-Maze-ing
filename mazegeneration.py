@@ -85,22 +85,22 @@ class MazeGenerator:
 
             #self.show()
 
-            road: str = ""
+            self.road: str = ""
             try:
-                road: str = self.resolve()
+                self.road: str = self.resolve()
             except MazeGenerateError as e:
                 print("RESOLVE FAILED", e)
-            if road:
+            if self.road:
                 print(end="MAZE RESOLVED : ")
-                print(road)
+                print(self.road)
 
             #self.show_pretty(True)
             self.show_pretty(False)
-            self.create_file(road)
+            self.create_file(self.road)
 
 
         @func_timer("creating file")
-        def create_file(self, road: str) -> None:
+        def create_file(self, self.road: str) -> None:
                 
             with open(self.config["OUTPUT_FILE"], "w") as file:
 
@@ -112,7 +112,7 @@ class MazeGenerator:
                 x, y = self.config["EXIT"]
                 file.write(f"{x},{y}\n")
 
-                file.write(road)
+                file.write(self.road)
 
         def create_string(self) -> str:
             out: list[str] = []

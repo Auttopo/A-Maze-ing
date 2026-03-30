@@ -91,7 +91,8 @@ class MazeGenerator:
             if self.road:
                 print(end="MAZE RESOLVED : ")
                 print(self.road)
-
+            
+            #self.set_road_show()
             #self.show_pretty(True)
             #self.show_pretty(False)
             self.create_file(self.road)
@@ -119,6 +120,28 @@ class MazeGenerator:
                     out.append(str("{0:x}".format(num)).capitalize())
                 out.append("\n")
             return "".join(out)
+
+        def set_road_show(self) -> None:
+            agents: list[list[int]] = [["x" for _ in range(self.config["HEIGHT"])] for _ in range(self.config["WIDTH"])]
+            pos_x, pos_y = self.config["ENTRY"]
+            agents[pos_y][pos_x] = 5
+            for elem in self.road:
+                match elem:
+                    case "S":
+                        pos_y += 1
+                    case "W":
+                        pos_x -= 1
+                    case "N":
+                        pos_y -= 1
+                    case "E":
+                        pos_x += 1
+                try:
+                    agents[pos_y][pos_x] = 0
+                except Exception:
+                    break
+            pos_x, pos_y = self.config["EXIT"]
+            agents[pos_y][pos_x] = 3
+            self.agents = agents
 
         def show(self) -> None:
             for elem in self.array:
@@ -160,7 +183,7 @@ class MazeGenerator:
                         s2[1] = "X"
                         s2[2] = "X"
                     
-                    if values:
+                    if values and isinstance(self.agents[j][i], (int, float)):
                         s2[2] = str(self.agents[j][i] % 10)
                         s2[1] = str(self.agents[j][i] // 10 % 10)
 
@@ -207,7 +230,6 @@ class MazeGenerator:
         @staticmethod
         def fast_get_west(array: list[int, int], shift_x: int = 0, shift_y: int = 0) -> str:
             return bin((array[shift_y][shift_x]) >> 3 & 1)
-
 
 
         @func_timer("resolving")
@@ -297,14 +319,11 @@ class MazeGenerator:
                     case "E":
                         pos_x -= 1
                     case _:
-                     #   for elem in agents:
-                     #       print(elem)
                         self.agents = agents
                         raise MazeGenerateError(f"Impossible road occured: {''.join(road)}")
-
+                    
                 road.append(shortest)
-            self.agents = agents
-            return "".join(road)
+            return "".join(road[::-1])
 
         @staticmethod
         def destroy_wall(array: list[list[int]], targets: tuple[tuple[int, int], tuple[int, int]]) -> None:
@@ -358,7 +377,6 @@ class MazeGenerator:
             if not 0 < max_pairs < 6:
                 raise MazeGenerateError("Agents in the maze is max 5, min 1")
             
-          #  visited: list[list[bool]]
             agents: list[list[int]]
             targets: dict[typle[int, int]]
             tree: set[tuple[int, int]]

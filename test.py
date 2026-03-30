@@ -1,3 +1,5 @@
+from mazegeneration import MazeGenerator
+from mazeinit import MazeInit
 from growing_tree import GrowingTree, DisplayMaze
 from typing import Any
 from mlx import Mlx
@@ -10,11 +12,14 @@ def main() -> None:
         'EXIT': (9, 9),
         'OUTPUT_FILE': 'result.txt'
     }
-    tree = GrowingTree(dic)
-    entry = (tree.x_entry, tree.y_entry)
-    exit = (tree.x_exit, tree.y_exit)
+    init = MazeInit('config.txt')
+    maze = MazeGenerator.UnperfectMaze(init())
+
+    # tree = GrowingTree(dic)
+    # entry = (tree.x_entry, tree.y_entry)
+    # exit = (tree.x_exit, tree.y_exit)
     # print(tree.get_the_list())
-    screen = DisplayMaze(tree.get_the_list(), tree.path, entry, exit)
+    screen = DisplayMaze(maze.array, maze.road, init.config['ENTRY'], init.config['EXIT'])
     screen.intialize_display_settings()
 
 

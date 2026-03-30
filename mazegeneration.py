@@ -6,6 +6,22 @@ import functools
 from os.path import exists
 import functools
 
+def func_timer(to_print: str) -> Callable[..., Any]:
+    def timing(func: Callable[..., Any]) -> Callable[..., Any]:
+        @functools.wraps(func)
+        def func_wrap(*args: Any, **kwargs: Any) -> Any:
+            time_start = datetime.now()
+            print(to_print, "start ...")
+            res: Any = func(*args, **kwargs)
+            time_end = datetime.now() - time_start
+            print(to_print, "time:", time_end.total_seconds(), "s")
+            return res
+        return func_wrap
+    return timing
+
+class MazeGenerateError(Exception):
+    pass
+
 class MazeGenerator:
 
     class UnperfectMaze:
@@ -23,14 +39,26 @@ class MazeGenerator:
             self.prime_list: list[list[int]] = [[True for _ in range(self.config["WIDTH"] + 1)] for _ in range(self.config["HEIGHT"] + 1)]
             
             #------------------------------------------ SEED SETUP
+           
+            from mazeinit import get_42_pos
 
+            positions = get_42_pos(self.config["WIDTH"], self.config["HEIGHT"])
+            print(positions)
+            print("entry:", config["ENTRY"])
+            print("exit:", config["EXIT"])
+            print("shape used:", config["SHAPE"])
+            if config["PERFECT"]:
+                print("method used: Perfect")
+            else:
+                print("method used: Unperfect")
+
+            print("seed used :")
             if config["SEED"] != "Random":
                 random.seed(config["SEED"])
                 print(config["SEED"])
             else:
                 seed = random.randint(0, 10**4000)
                 random.seed(seed)
-                print("seed used :")
                 print(seed)
 
             #------------------------------------------ PRIME LIST SETUP
@@ -50,6 +78,7 @@ class MazeGenerator:
       
             #------------------------------------------- GENERATE
 
+
             self.generate(self.config["SHAPE"])
             
             # VALUES ENTRY / EXIT NOT VERIFIED !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -59,29 +88,16 @@ class MazeGenerator:
             road: str = ""
             try:
                 road: str = self.resolve()
-            except Exception as e:
-                pass
+            except MazeGenerateError as e:
                 print("RESOLVE FAILED", e)
             if road:
                 print(end="MAZE RESOLVED : ")
                 print(road)
 
             #self.show_pretty(True)
-            #self.show_pretty(False)
+            self.show_pretty(False)
             self.create_file(road)
 
-        def func_timer(to_print: str) -> Callable[..., Any]:
-            def timing(func: Callable[..., Any]) -> Callable[..., Any]:
-                @functools.wraps(func)
-                def func_wrap(*args: Any, **kwargs: Any) -> Any:
-                    time_start = datetime.now()
-                    print(to_print, "start ...")
-                    res: Any = func(*args, **kwargs)
-                    time_end = datetime.now() - time_start
-                    print(to_print, "time:", time_end.total_seconds(), "s")
-                    return res
-                return func_wrap
-            return timing
 
         @func_timer("creating file")
         def create_file(self, road: str) -> None:
@@ -195,6 +211,7 @@ class MazeGenerator:
             return bin((array[shift_y][shift_x]) >> 3 & 1)
 
 
+
         @func_timer("resolving")
         def resolve(self) -> str:
 
@@ -285,7 +302,7 @@ class MazeGenerator:
                         for elem in agents:
                             print(elem)
                             self.agents = agents
-                        raise Exception(f"Impossible road occured: {''.join(road)}")
+                        raise MazeGenerateError(f"Impossible road occured: {''.join(road)}")
 
                 road.append(shortest)
           #  for elem in agents:
@@ -340,10 +357,10 @@ class MazeGenerator:
             return (agents, start)
 
         @func_timer("generating")
-        def maze_explorator(self, max_pairs: int) -> None:
+        def maze_explore_and_merge(self, max_pairs: int) -> None:
 
             if not 0 < max_pairs < 6:
-                raise Exception("Agents in the maze is max 5, min 1")
+                raise MazeGenerateError("Agents in the maze is max 5, min 1")
             
             visited: list[list[bool]]
             agents: list[list[int]]
@@ -387,8 +404,7 @@ class MazeGenerator:
                                 if target_value and target_value != agent_value:
                                     destroy_wall(array, ((pos_x, pos_y - 1) , new_branch))
                                     if (pos_x, pos_y - 1) in targets.keys():
-                                        raise Exception("Something strange happened")
-                                        #targets.pop((pos_x, pos_y - 1))
+                                        targets.pop((pos_x, pos_y - 1))
                                     pairs.add(frozenset({agent_value, target_value}))
                                     pair_end -= 1
 
@@ -403,8 +419,7 @@ class MazeGenerator:
                                 if target_value and target_value != agent_value:
                                     destroy_wall(array, ((pos_x + 1, pos_y) , new_branch))
                                     if (pos_x + 1, pos_y) in targets.keys():
-                                        raise Exception("Something strange happened")
-                                        #targets.pop((pos_x + 1, pos_y))
+                                        targets.pop((pos_x + 1, pos_y))
                                     pairs.add(frozenset({agent_value, target_value}))
                                     pair_end -= 1
 
@@ -419,8 +434,7 @@ class MazeGenerator:
                                 if target_value and target_value != agent_value:
                                     destroy_wall(array, ((pos_x, pos_y + 1) , new_branch))
                                     if (pos_x, pos_y + 1) in targets.keys():
-                                        raise Exception("Something strange happened")
-                                        #targets.pop((pos_x, pos_y + 1))
+                                        targets.pop((pos_x, pos_y + 1))
                                     pairs.add(frozenset({agent_value, target_value}))
                                     pair_end -= 1
 
@@ -435,8 +449,7 @@ class MazeGenerator:
                                 if target_value and target_value != agent_value:
                                     destroy_wall(array, ((pos_x - 1, pos_y) , new_branch))
                                     if (pos_x - 1, pos_y) in targets.keys():
-                                        raise Exception("Somethings strange happened")
-                                        #targets.pop((pos_x - 1, pos_y))
+                                        targets.pop((pos_x - 1, pos_y))
                                     pairs.add(frozenset({agent_value, target_value}))
                                     pair_end -= 1
                                     
@@ -569,7 +582,7 @@ class MazeGenerator:
                     c_stairs += jump_stairs
                     c_x += jump_x
                     c_y += jump_y
-                except Exception:
+                except MazeGenerateError:
                     break
 
             
@@ -597,7 +610,6 @@ class MazeGenerator:
                     if self.pos_y % 2 == 0:
                         self.draw_x()
                     self.pos_x += 1
-                print(self.pos_y)
         
         def draw_cross(self) -> None:
             
@@ -640,36 +652,12 @@ class MazeGenerator:
 
         def set_42_walls(self) -> None:
             # set: up left point
-            self.pos_x = int(self.config["WIDTH"] / 2) - 3
-            self.pos_y = int(self.config["HEIGHT"] / 2) - 2
-            for i in range(2):
+            from mazeinit import get_42_pos
+
+            positions = get_42_pos(self.config["WIDTH"], self.config["HEIGHT"])
+
+            for self.pos_x, self.pos_y in positions:
                 self.draw_cube()
-                self.pos_y += 1
-            for i in range(2):
-                self.draw_cube()
-                self.pos_x += 1
-            for i in range(2):
-                self.draw_cube()
-                self.pos_y += 1
-            self.draw_cube()
-            self.pos_x += 2
-            self.pos_y -= 4
-            for i in range(2):
-                self.draw_cube()
-                self.pos_x += 1
-            for i in range(2):
-                self.draw_cube()
-                self.pos_y += 1
-            for i in range(2):
-                self.draw_cube()
-                self.pos_x -= 1
-            for i in range(2):
-                self.draw_cube()
-                self.pos_y += 1
-            for i in range(2):
-                self.draw_cube()
-                self.pos_x += 1
-            self.draw_cube()
 
         def generate(self, indicator: str) -> None:
             entries = 5
@@ -685,9 +673,9 @@ class MazeGenerator:
                 case "Square":
                     self.generate_squares()
                 case _:
-                    raise Exception("unknow maze type")
+                    raise MazeGenerateError("unknow maze type")
             self.set_42_walls()
-            self.maze_explorator(entries)
+            self.maze_explore_and_merge(entries)
 
             
             

@@ -81,8 +81,6 @@ class MazeGenerator:
 
             self.generate(self.config["SHAPE"])
             
-            # VALUES ENTRY / EXIT NOT VERIFIED !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
             #self.show()
 
             self.road: str = ""
@@ -95,7 +93,7 @@ class MazeGenerator:
                 print(self.road)
 
             #self.show_pretty(True)
-            self.show_pretty(False)
+            #self.show_pretty(False)
             self.create_file(self.road)
 
 
@@ -215,7 +213,7 @@ class MazeGenerator:
         @func_timer("resolving")
         def resolve(self) -> str:
 
-            agents: list[list[int]] = [[0 for _ in range(self.config["WIDTH"])] for _ in range(self.config["HEIGHT"])]
+            agents: list[list[int]] = [[0 for _ in range(self.config["HEIGHT"])] for _ in range(self.config["WIDTH"])]
 
             tree: list[tuple[int, int]]
             dest_x: int
@@ -299,14 +297,12 @@ class MazeGenerator:
                     case "E":
                         pos_x -= 1
                     case _:
-                        for elem in agents:
-                            print(elem)
-                            self.agents = agents
+                     #   for elem in agents:
+                     #       print(elem)
+                        self.agents = agents
                         raise MazeGenerateError(f"Impossible road occured: {''.join(road)}")
 
                 road.append(shortest)
-          #  for elem in agents:
-          #      print(elem)
             self.agents = agents
             return "".join(road)
 
@@ -362,7 +358,7 @@ class MazeGenerator:
             if not 0 < max_pairs < 6:
                 raise MazeGenerateError("Agents in the maze is max 5, min 1")
             
-            visited: list[list[bool]]
+          #  visited: list[list[bool]]
             agents: list[list[int]]
             targets: dict[typle[int, int]]
             tree: set[tuple[int, int]]
@@ -377,7 +373,6 @@ class MazeGenerator:
 
             while(1):
 
-                visited = [[False for _ in range(self.config["WIDTH"])] for _ in range(self.config["HEIGHT"])]
                 targets = {}
                 agents, tree = self.setup_agents(max_pairs)
                 prime_list = self.prime_list
@@ -392,7 +387,6 @@ class MazeGenerator:
                         new_branch = random.choice(list(tree))
                         tree.remove(new_branch)
                         pos_x, pos_y = new_branch
-                        visited[pos_y][pos_x] = True
 
                         if new_branch in targets:
                             targets.pop(new_branch)
@@ -402,13 +396,14 @@ class MazeGenerator:
                         if prime_list[pos_y - 1][pos_x]:
                             if pair_end and {target_value := agents[pos_y - 1][pos_x], agent_value} not in pairs:
                                 if target_value and target_value != agent_value:
-                                    destroy_wall(array, ((pos_x, pos_y - 1) , new_branch))
+                                    if get_north(array, pos_x, pos_y) == bin(1):
+                                        destroy_wall(array, ((pos_x, pos_y - 1) , new_branch))
                                     if (pos_x, pos_y - 1) in targets.keys():
                                         targets.pop((pos_x, pos_y - 1))
                                     pairs.add(frozenset({agent_value, target_value}))
                                     pair_end -= 1
 
-                            if not visited[pos_y - 1][ pos_x]:
+                            if not agents[pos_y - 1][ pos_x]:
                                 targets.update({(pos_x, pos_y - 1) : new_branch})
                                 if get_north(array, pos_x, pos_y) == bin(0):
                                     agents[pos_y - 1][pos_x] = agent_value
@@ -417,13 +412,14 @@ class MazeGenerator:
                         if prime_list[pos_y][ pos_x + 1]:
                             if pair_end and {target_value := agents[pos_y][pos_x + 1], agent_value} not in pairs:
                                 if target_value and target_value != agent_value:
-                                    destroy_wall(array, ((pos_x + 1, pos_y) , new_branch))
+                                    if get_east(array, pos_x, pos_y) == bin(1):
+                                        destroy_wall(array, ((pos_x + 1, pos_y) , new_branch))
                                     if (pos_x + 1, pos_y) in targets.keys():
                                         targets.pop((pos_x + 1, pos_y))
                                     pairs.add(frozenset({agent_value, target_value}))
                                     pair_end -= 1
 
-                            if not visited[pos_y][ pos_x + 1]:
+                            if not agents[pos_y][ pos_x + 1]:
                                 targets.update({(pos_x + 1, pos_y) : new_branch})
                                 if get_east(array, pos_x, pos_y) == bin(0):
                                     agents[pos_y][pos_x + 1] = agent_value
@@ -432,13 +428,14 @@ class MazeGenerator:
                         if prime_list[pos_y + 1][ pos_x]:
                             if pair_end and {target_value := agents[pos_y + 1][pos_x], agent_value} not in pairs:
                                 if target_value and target_value != agent_value:
-                                    destroy_wall(array, ((pos_x, pos_y + 1) , new_branch))
+                                    if get_south(array, pos_x, pos_y) == bin(1):
+                                        destroy_wall(array, ((pos_x, pos_y + 1) , new_branch))
                                     if (pos_x, pos_y + 1) in targets.keys():
                                         targets.pop((pos_x, pos_y + 1))
                                     pairs.add(frozenset({agent_value, target_value}))
                                     pair_end -= 1
 
-                            if not visited[pos_y + 1][ pos_x]:
+                            if not agents[pos_y + 1][ pos_x]:
                                 targets.update({(pos_x, pos_y + 1) : new_branch})
                                 if get_south(array, pos_x, pos_y) == bin(0):
                                     agents[pos_y + 1][pos_x] = agent_value
@@ -447,13 +444,14 @@ class MazeGenerator:
                         if prime_list[pos_y][ pos_x - 1]:
                             if pair_end and {target_value := agents[pos_y][pos_x - 1], agent_value} not in pairs:
                                 if target_value and target_value != agent_value:
-                                    destroy_wall(array, ((pos_x - 1, pos_y) , new_branch))
+                                    if get_west(array, pos_x, pos_y) == bin(1):
+                                        destroy_wall(array, ((pos_x - 1, pos_y) , new_branch))
                                     if (pos_x - 1, pos_y) in targets.keys():
                                         targets.pop((pos_x - 1, pos_y))
                                     pairs.add(frozenset({agent_value, target_value}))
                                     pair_end -= 1
                                     
-                            if not visited[pos_y][ pos_x - 1]:
+                            if not agents[pos_y][ pos_x - 1]:
                                 targets.update({(pos_x - 1, pos_y) : new_branch})
                                 if get_west(array, pos_x, pos_y) == bin(0):
                                     agents[pos_y][pos_x - 1] = agent_value
@@ -467,12 +465,6 @@ class MazeGenerator:
                         destroy_wall(array, sample)
                 if self.config["PERFECT"] or pair_end == 0:
                     break
-
-          #  print(pair_end)
-          #  print(pairs)
-          #  print("AGENTS:")
-          #  for elem in agents:
-          #      print(elem)
             return
 
         def draw_x(self, shift_x:int = 0, shift_y: int = 0) -> None:

@@ -40,6 +40,19 @@ class MazeGenerator:
 
             #------------------------------------------ SEED SETUP
 
+            from mazeinit import get_42_pos
+
+            positions = get_42_pos(self.config["WIDTH"], self.config["HEIGHT"])
+            print(positions)
+            print("entry:", config["ENTRY"])
+            print("exit:", config["EXIT"])
+            print("shape used:", config["SHAPE"])
+            if config["PERFECT"]:
+                print("method used: Perfect")
+            else:
+                print("method used: Unperfect")
+
+            print("seed used :")
             if config["SEED"] != "Random":
                 random.seed(config["SEED"])
                 print(config["SEED"])
@@ -68,8 +81,6 @@ class MazeGenerator:
 
             self.generate(self.config["SHAPE"])
 
-            # VALUES ENTRY / EXIT NOT VERIFIED !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
             #self.show()
 
             self.road: str = ""
@@ -81,6 +92,7 @@ class MazeGenerator:
                 print(end="MAZE RESOLVED : ")
                 print(self.road)
 
+            #self.set_road_show()
             #self.show_pretty(True)
             #self.show_pretty(False)
             self.create_file(self.road)
@@ -171,7 +183,7 @@ class MazeGenerator:
                         s2[1] = "X"
                         s2[2] = "X"
 
-                    if values:
+                    if values and isinstance(self.agents[j][i], (int, float)):
                         s2[2] = str(self.agents[j][i] % 10)
                         s2[1] = str(self.agents[j][i] // 10 % 10)
 
@@ -363,9 +375,8 @@ class MazeGenerator:
         def maze_explore_and_merge(self, max_pairs: int) -> None:
 
             if not 0 < max_pairs < 6:
-                raise Exception("Agents in the maze is max 5, min 1")
+                raise MazeGenerateError("Agents in the maze is max 5, min 1")
 
-            visited: list[list[bool]]
             agents: list[list[int]]
             targets: dict[typle[int, int]]
             tree: set[tuple[int, int]]
@@ -458,7 +469,7 @@ class MazeGenerator:
                                     pairs.add(frozenset({agent_value, target_value}))
                                     pair_end -= 1
 
-                            if not visited[pos_y][ pos_x - 1]:
+                            if not agents[pos_y][ pos_x - 1]:
                                 targets.update({(pos_x - 1, pos_y) : new_branch})
                                 if get_west(array, pos_x, pos_y) == bin(0):
                                     agents[pos_y][pos_x - 1] = agent_value
@@ -609,7 +620,6 @@ class MazeGenerator:
                     if self.pos_y % 2 == 0:
                         self.draw_x()
                     self.pos_x += 1
-                print(self.pos_y)
 
         def draw_cross(self) -> None:
 
@@ -675,9 +685,7 @@ class MazeGenerator:
                 case _:
                     raise MazeGenerateError("unknow maze type")
             self.set_42_walls()
-            self.maze_explorator(entries)
+            self.maze_explore_and_merge(entries)
 
 
-
-
-
+            

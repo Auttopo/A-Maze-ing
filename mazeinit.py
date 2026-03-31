@@ -1,4 +1,5 @@
 
+import sys
 from typing import Any
 from os.path import exists
 import random
@@ -6,6 +7,9 @@ import random
 
 def get_42_pos(width: int, height: int) -> list[tuple[int, int]]:
     # set: up left point
+    if width < 11 or height < 9:
+        return [(-1, -1)]
+
     pos_list: list[tuple[int, int]] = []
     pos_x = int(width / 2) - 3
     pos_y = int(height / 2) - 2
@@ -44,7 +48,7 @@ def get_42_pos(width: int, height: int) -> list[tuple[int, int]]:
         pos_x += 1
     pos_list.append((pos_x, pos_y))
     return pos_list
-    
+
 
 class MazeConfigError(Exception):
     pass
@@ -76,7 +80,13 @@ class MazeInit():
             return
         try:
             data: list[str] | str = line.split("=")
+            if data[0] in self.config:
+                raise MazeConfigError(
+                        f"keys can't be present more than once, "
+                        f"keep only one {data[0]}")
             self.config.update({data[0]: data[1]})
+        except MazeConfigError:
+            raise
         except Exception:
             raise MazeConfigError(f"line '{i}' not correclty set: {data}"
                                   "\nformat: SETTING_NAME=VALUE")
@@ -164,23 +174,22 @@ class MazeInit():
                     "please set a different output name file or set "
                     "OUTPUT_FILE_OVERRIDE=True, this one already exist")
 
-
-
-
-
     def data_validation(self) -> None:
 
-        #----------------------------------- SIZE CHECK
+        # ----------------------------------- SIZE CHECK
         self()["WIDTH"] = self.value_check(self()["WIDTH"], "WIDTH")
         self()["HEIGHT"] = self.value_check(self()["HEIGHT"], "HEIGHT")
-        if self()["WIDTH"] < 11:
-            raise MazeConfigError("width can't be lower than 11")
-        if self()["HEIGHT"] < 9:
-            raise MazeConfigError("height can't be lower than 9")
+        if self()["WIDTH"] * self()["HEIGHT"] < 2:
+            raise MazeConfigError("maze air need to be > 1")
 
         # --------------------------------- POS CHECK
+        if self.config["WIDTH"] < 11 or self.config["HEIGHT"] < 9:
+            print("42 not drawed, width < 11 or height < 9", file=sys.stderr)
         illegal_pos = get_42_pos(self.config["WIDTH"], self.config["HEIGHT"])
-        possibles: list[tuple[int]] = [(x, y) for y in range(self()["HEIGHT"]) for x in range(self()["WIDTH"]) if (x, y) not in illegal_pos]
+        possibles: list[tuple[int]] = [
+                (x, y) for y in range(self()["HEIGHT"])
+                for x in range(self()["WIDTH"])
+                if (x, y) not in illegal_pos]
         if self()["ENTRY"] == "Random":
             x, y = random.choice(possibles)
             self().update({"ENTRY": (x, y)})
@@ -205,22 +214,23 @@ class MazeInit():
             case _:
                 raise MazeConfigError("PERFECT unknow value")
 
-        #-------------------------------- SEED CHECK
+        # -------------------------------- SEED CHECK
         if self()["SEED"] != "Random":
             self()["SEED"] = self.value_check(
                 self()["SEED"],
                 "SEED need to set as 'Random', or"
             )
 
-        #---------------------------------- SHAPE CHECK
+        # ---------------------------------- SHAPE CHECK
         if self().get("SHAPE"):
             if self()["SHAPE"] == "Random":
-                self().update({"SHAPE": random.choice(["Classic", "Circle", "Square"])})
+                self().update(
+                        {"SHAPE": random.choice(["Classic", "Circle", "Square"
+                                                 ])})
             elif self()["SHAPE"] not in {"Classic", "Circle", "Square"}:
-                raise MazeConfigError("SHAPE unknow type, possibilities : Classic ; Circle ; Square ; Random")
+                raise MazeConfigError(
+                        "SHAPE unknow type, possibilities "
+                        ": Classic ; Circle ; Square ; Random")
         else:
-            self().update({"SHAPE": random.choice(["Classic", "Circle", "Square"])})
-
-
-
-
+            self().update({"SHAPE": random.choice(
+                ["Classic", "Circle", "Square"])})

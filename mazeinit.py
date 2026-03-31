@@ -1,6 +1,49 @@
 
 from typing import Any
 from os.path import exists
+import random
+
+
+def get_42_pos(width: int, height: int) -> list[tuple[int, int]]:
+    # set: up left point
+    pos_list: list[tuple[int, int]] = []
+    pos_x = int(width / 2) - 3
+    pos_y = int(height / 2) - 2
+    for i in range(2):
+        pos_list.append((pos_x, pos_y))
+        pos_y += 1
+    for i in range(2):
+        pos_list.append((pos_x, pos_y))
+        pos_x += 1
+
+    for i in range(2):
+        pos_list.append((pos_x, pos_y))
+        pos_y -= 1
+    pos_list.append((pos_x, pos_y))
+    pos_y += 2
+    for i in range(2):
+        pos_list.append((pos_x, pos_y))
+        pos_y += 1
+    pos_list.append((pos_x, pos_y))
+    pos_x += 2
+    pos_y -= 4
+    for i in range(2):
+        pos_list.append((pos_x, pos_y))
+        pos_x += 1
+    for i in range(2):
+        pos_list.append((pos_x, pos_y))
+        pos_y += 1
+    for i in range(2):
+        pos_list.append((pos_x, pos_y))
+        pos_x -= 1
+    for i in range(2):
+        pos_list.append((pos_x, pos_y))
+        pos_y += 1
+    for i in range(2):
+        pos_list.append((pos_x, pos_y))
+        pos_x += 1
+    pos_list.append((pos_x, pos_y))
+    return pos_list
 
 
 class MazeConfigError(Exception):
@@ -82,17 +125,18 @@ class MazeInit():
 
         ex: str = ""
         ey: str = ""
+
         entry: list[str] = self()[data_str].split(",")
         try:
             x: int = MazeInit.value_check(entry[0], data_str + "_X")
-            if x > self()["WIDTH"]:
-                raise MazeConfigError(f"{data_str}_X need to be <= WIDTH")
+            if x >= self()["WIDTH"]:
+                raise MazeConfigError(f"{data_str}_X need to be < WIDTH")
         except Exception as e:
             ex = e
         try:
             y: int = MazeInit.value_check(entry[1], data_str + "_Y")
-            if y > self()["HEIGHT"]:
-                raise MazeConfigError(f"{data_str}_Y need to be <= HEIGHT")
+            if y >= self()["HEIGHT"]:
+                raise MazeConfigError(f"{data_str}_Y need to be < HEIGHT")
         except Exception as e:
             ey = e
         if ex or ey:
@@ -120,29 +164,59 @@ class MazeInit():
                     "please set a different output name file or set "
                     "OUTPUT_FILE_OVERRIDE=True, this one already exist")
 
+
+
+
+
     def data_validation(self) -> None:
+
+        #----------------------------------- SIZE CHECK
         self()["WIDTH"] = self.value_check(self()["WIDTH"], "WIDTH")
         self()["HEIGHT"] = self.value_check(self()["HEIGHT"], "HEIGHT")
-        self.coordinates_check("ENTRY")
-        self.coordinates_check("EXIT")
+        if self()["WIDTH"] < 11:
+            raise MazeConfigError("width can't be lower than 11")
+        if self()["HEIGHT"] < 9:
+            raise MazeConfigError("height can't be lower than 9")
+
+        # --------------------------------- POS CHECK
+        illegal_pos = get_42_pos(self.config["WIDTH"], self.config["HEIGHT"])
+        possibles: list[tuple[int]] = [(x, y) for y in range(self()["HEIGHT"]) for x in range(self()["WIDTH"]) if (x, y) not in illegal_pos]
+        if self()["ENTRY"] == "Random":
+            x, y = random.choice(possibles)
+            self().update({"ENTRY": (x, y)})
+        else:
+            self.coordinates_check("ENTRY")
+        if self()["EXIT"] == "Random":
+            possibles.remove(self()["ENTRY"])
+            x, y = random.choice(possibles)
+            self().update({"EXIT": (x, y)})
+        else:
+            self.coordinates_check("EXIT")
+
+        # -------------------------------- PERFECT CHECK
         self.file_check()
         match self()["PERFECT"]:
             case "True":
                 self()["PERFECT"] = True
             case "False":
                 self()["PERFECT"] = False
+            case "Random":
+                self()["PERFECT"] = random.choice([True, False])
             case _:
                 raise MazeConfigError("PERFECT unknow value")
+
+        #-------------------------------- SEED CHECK
         if self()["SEED"] != "Random":
             self()["SEED"] = self.value_check(
                 self()["SEED"],
                 "SEED need to set as 'Random', or"
             )
-        if self()["WIDTH"] < 11:
-            raise MazeConfigError("width can't be lower than 11")
-        if self()["HEIGHT"] < 9:
-            raise MazeConfigError("height can't be lower than 9")
-        if self()["SHAPE"] not in {"Classic", "Circle", "Square"}:
-            raise MazeConfigError("SHAPE unknow type, possibilities : Classic ; Circle ; Square")
 
-
+        #---------------------------------- SHAPE CHECK
+        if self().get("SHAPE"):
+            if self()["SHAPE"] == "Random":
+                self().update({"SHAPE": random.choice(["Classic", "Circle", "Square"])})
+            elif self()["SHAPE"] not in {"Classic", "Circle", "Square"}:
+                raise MazeConfigError("SHAPE unknow type, possibilities : Classic ; Circle ; Square ; Random")
+        else:
+            self().update({"SHAPE": random.choice(["Classic", "Circle", "Square"])})

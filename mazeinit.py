@@ -44,7 +44,7 @@ def get_42_pos(width: int, height: int) -> list[tuple[int, int]]:
         pos_x += 1
     pos_list.append((pos_x, pos_y))
     return pos_list
-    
+
 
 class MazeConfigError(Exception):
     pass
@@ -220,7 +220,3 @@ class MazeInit():
                 raise MazeConfigError("SHAPE unknow type, possibilities : Classic ; Circle ; Square ; Random")
         else:
             self().update({"SHAPE": random.choice(["Classic", "Circle", "Square"])})
-
-
-
-

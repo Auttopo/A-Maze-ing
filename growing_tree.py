@@ -19,8 +19,8 @@ class GrowingTree:
 
     def __init__(self, dic: dict[str, Any]) -> None:
         """Allow you to have the output file directly"""
-        self.rows: int = dic["HEIGHT"]
-        self.columns: int = dic["WIDTH"]
+        self.rows: int = dic["WIDTH"]
+        self.columns: int = dic["HEIGHT"]
         self.x_entry: int
         self.y_entry: int
         self.x_exit: int
@@ -180,7 +180,7 @@ class GrowingTree:
         self.path = self.path[:-1]
         return False
 
-    
+
 
 
     def fill_the_file(self) -> None:

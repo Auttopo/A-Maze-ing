@@ -171,7 +171,8 @@ class DisplayMaze:
 
                 if x == self.column - 1:
                     for i in range(
-                        self.cell_size + self.wall, self.cell_size + (self.wall * 2)
+                        self.cell_size + self.wall,
+                        self.cell_size + (self.wall * 2)
                     ):
                         for j in range(0, self.wall + self.cell_size):
                             offset = (
@@ -218,14 +219,17 @@ class DisplayMaze:
                      y: int,
                      color: tuple[int, int, int, int]) -> None:
         """Color the inside of a cell"""
-        for i in range(self.wall, self.cell_size + self.wall):
-            for j in range(self.wall, self.cell_size + self.wall):
+        cell = self.cells[y][x]
+        for i in range(self.wall + 2, self.cell_size + self.wall - 2):
+            for j in range(self.wall + 2, self.cell_size + self.wall - 2):
                 offset = (
-                    (x * (self.cell_size + self.wall) + i) * (self.bit_per_pixel // 8) +
+                    (x * (self.cell_size + self.wall) + i) *
+                    (self.bit_per_pixel // 8) +
                     (y * (self.cell_size + self.wall) + j) * self.size_line
                 )
                 for k in range(0, 4):
                     self.data[offset + k] = color[k]
+        
 
     def draw_forty_two(self, color: tuple[int, int, int, int]) -> None:
         """Draw the forty-two symbol's walls"""
@@ -340,7 +344,8 @@ class DisplayMaze:
         self.regenerate = False
         self.clean_image()
         self.draw_walls(self.wall_color)
-        self.draw_forty_two(self.wall_color)
+        if not (self.column < 9 or self.rows < 9):
+            self.draw_forty_two(self.wall_color)
         self.color_a_case(self.entry[0], self.entry[1], self.entry_color)
         self.color_a_case(self.exit[0], self.exit[1], self.exit_color)
         self.draw_the_path(self.path_color)
@@ -363,7 +368,8 @@ class DisplayMaze:
             init = MazeInit('config.txt')
             maze = MazeGenerator.UnperfectMaze(init())
             self.initialize_maze_settings(
-                maze.array, maze.road, self.entry, self.exit
+                maze.array, maze.road,
+                init.config['ENTRY'], init.config['EXIT']
             )
             self.draw()
             return

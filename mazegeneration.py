@@ -1,25 +1,7 @@
 
-import functools
 import random
-from datetime import datetime
-from typing import Any, Callable, TypedDict
-
-
-def func_timer(to_print: str) -> Callable[..., Any]:
-    """"""
-    def timing(func: Callable[..., Any]) -> Callable[..., Any]:
-        @functools.wraps(func)
-        def func_wrap(*args: Any, **kwargs: Any) -> Any:
-            time_start = datetime.now()
-            print(to_print, "start ...")
-            res: Any = func(*args, **kwargs)
-            time_end = datetime.now() - time_start
-            print(to_print, "time:", time_end.total_seconds(), "s")
-            return res
-
-        return func_wrap
-
-    return timing
+from typing import Any, Callable, TypedDict, TypeAlias
+from mazeinit import get_42_pos
 
 
 class MazeDict(TypedDict):
@@ -44,833 +26,744 @@ class MazeGenerateError(Exception):
 class MazeGenerator:
     """ main class for generation """
 
-    class UnperfectMaze:
-        """ contained class for controled generation """
+    def __init__(self, config: dict[str, Any]) -> None:
+        """ init of generation utilities and generate in same time """
 
-        def __init__(self, config: MazeDict) -> None:
-            """ init of generation utilities and generate in same time """
+        MazeDict: TypeAlias = dict[str, Any]
 
-            self.config: MazeDict = config
-            self.array: list[list[int]] = []
-            # self.memory: list[list[int]] = []
-            self.pos_x = 0
-            self.pos_y = 0
-            self.config_width = config["WIDTH"]
-            self.config_height = config["HEIGHT"]
-            self.prime_list: list[list[int]] = [
-                [True for _ in range(self.config["WIDTH"] + 1)]
-                for _ in range(self.config["HEIGHT"] + 1)
-            ]
+        self.config: MazeDict = config
+        self.array: list[list[int]] = []
+        self.pos_x: int = 0
+        self.pos_y: int = 0
+        self.prime_list: list[list[bool]] = [
+            [True for _ in range(self.config["WIDTH"] + 1)]
+            for _ in range(self.config["HEIGHT"] + 1)
+        ]
 
-            # ------------------------------------------ SEED SETUP
+        # ------------------------------------------ SEED SETUP
 
-            from mazeinit import get_42_pos
+        self.seed: int
+        if config["SEED"] != "Random":
+            random.seed(config["SEED"])
+            self.seed = config["SEED"]
+        else:
+            self.seed = random.randint(0, 10**4000)
+            random.seed(self.seed)
 
-            positions: list[tuple[int, int]] = get_42_pos(
-                    self.config["WIDTH"], self.config["HEIGHT"])
-            print(positions)
-            print("entry:", config["ENTRY"])
-            print("exit:", config["EXIT"])
-            print("shape used:", config["SHAPE"])
-            if config["PERFECT"]:
-                print("method used: Perfect")
+        # ------------------------------------------ PRIME LIST SETUP
+
+        for i in range(config["HEIGHT"]):
+            self.prime_list[i][-1] = False
+
+            self.array.append([0b0] * (config["WIDTH"]))
+            self.array[i][0] += 0b1000
+            self.array[i][config["WIDTH"] - 1] += 0b0010
+
+        for i in range(config["WIDTH"]):
+            self.prime_list[-1][i] = False
+
+            self.array[0][i] += 0b0001
+            self.array[config["HEIGHT"] - 1][i] += 0b0100
+
+        # ------------------------------------------- GENERATE
+
+        self.generate(self.config["SHAPE"])
+
+        self.road: str = ""
+        self.road = self.resolve()
+
+        self.create_file(self.road)
+
+    def create_file(self, road: str) -> None:
+        """ create the file with maze, road to exit, entry and exit pos """
+
+        with open(self.config["OUTPUT_FILE"], "w") as file:
+            file.write(self.create_string())
+            file.write("\n")
+
+            x: int
+            y: int
+            x, y = self.config["ENTRY"]
+            file.write(f"{x},{y}\n")
+            x, y = self.config["EXIT"]
+            file.write(f"{x},{y}\n")
+
+            file.write(self.road)
+
+    def create_string(self) -> str:
+        """ create the hexadecimal maze string """
+        out: list[str] = []
+        for elem in self.array:
+            for num in elem:
+                out.append(str("{0:x}".format(num)).capitalize())
+            out.append("\n")
+        return "".join(out)
+
+    def get_north(self, shift_x: int = 0, shift_y: int = 0) -> str:
+        """ get the north wall bit. with few parameters """
+        return bin(
+                (self.array[self.pos_y + shift_y][self.pos_x + shift_x]
+                 ) >> 0 & 1)
+
+    def get_east(self, shift_x: int = 0, shift_y: int = 0) -> str:
+        """ get the east wall bit. with few parameters """
+        return bin(
+                (self.array[self.pos_y + shift_y][self.pos_x + shift_x]
+                 ) >> 1 & 1)
+
+    def get_south(self, shift_x: int = 0, shift_y: int = 0) -> str:
+        """ get the north wall bit. with few parameters """
+        return bin(
+                (self.array[self.pos_y + shift_y][self.pos_x + shift_x]
+                 ) >> 2 & 1)
+
+    def get_west(self, shift_x: int = 0, shift_y: int = 0) -> str:
+        """ get the north wall bit. with few parameters """
+        return bin(
+                (self.array[self.pos_y + shift_y][self.pos_x + shift_x]
+                 ) >> 3 & 1)
+
+    @staticmethod
+    def fast_get_north(
+        array: list[list[int]], shift_x: int = 0, shift_y: int = 0
+    ) -> int:
+        """ get the north wall bit """
+        """ optimised for local binding and no lookup """
+        return ((array[shift_y][shift_x]) >> 0 & 1)
+
+    @staticmethod
+    def fast_get_east(
+        array: list[list[int]], shift_x: int = 0, shift_y: int = 0
+    ) -> int:
+        """ get the east wall bit """
+        """ optimised for local binding and no lookup """
+        return ((array[shift_y][shift_x]) >> 1 & 1)
+
+    @staticmethod
+    def fast_get_south(
+        array: list[list[int]], shift_x: int = 0, shift_y: int = 0
+    ) -> int:
+        """ get the south wall bit """
+        """ optimised for local binding and no lookup """
+        return ((array[shift_y][shift_x]) >> 2 & 1)
+
+    @staticmethod
+    def fast_get_west(
+        array: list[list[int]], shift_x: int = 0, shift_y: int = 0
+    ) -> int:
+        """ get the west wall bit """
+        """ optimised for local binding and no lookup """
+        return ((array[shift_y][shift_x]) >> 3 & 1)
+
+    def resolve(self) -> str:
+        """ resolve the maze with agents communication """
+        """Usage: each agent give the distance beetwin him and the start"""
+        """ if an agent have differents possibility
+        he keep the shortest way """
+
+        agents: list[list[int]] = [
+            [0 for _ in range(self.config["WIDTH"])]
+            for _ in range(self.config["HEIGHT"])
+        ]
+
+        tree: list[tuple[int, int]]
+
+        get_north: Callable[..., int] = MazeGenerator.fast_get_north
+        get_east: Callable[..., int] = MazeGenerator.fast_get_east
+        get_south: Callable[..., int] = MazeGenerator.fast_get_south
+        get_west: Callable[..., int] = MazeGenerator.fast_get_west
+        array: list[list[int]] = self.array
+
+        pos_x: int
+        pos_y: int
+        pos_x, pos_y = self.config["ENTRY"]
+        tree = [(pos_x, pos_y)]
+        agents[pos_y][pos_x] = 1
+
+        # create the distances map
+        while tree:
+            pos_x, pos_y = tree.pop(0)
+            new_value: int = agents[pos_y][pos_x] + 1
+
+            if not get_north(array, pos_x, pos_y):
+                if (
+                    new_value < agents[pos_y - 1][pos_x]
+                    or agents[pos_y - 1][pos_x] == 0
+                ):
+                    agents[pos_y - 1][pos_x] = new_value
+                    tree.append((pos_x, pos_y - 1))
+
+            if not get_east(array, pos_x, pos_y):
+                if (
+                    new_value < agents[pos_y][pos_x + 1]
+                    or agents[pos_y][pos_x + 1] == 0
+                ):
+                    agents[pos_y][pos_x + 1] = new_value
+                    tree.append((pos_x + 1, pos_y))
+
+            if not get_south(array, pos_x, pos_y):
+                if (
+                    new_value < agents[pos_y + 1][pos_x]
+                    or agents[pos_y + 1][pos_x] == 0
+                ):
+                    agents[pos_y + 1][pos_x] = new_value
+                    tree.append((pos_x, pos_y + 1))
+
+            if not get_west(array, pos_x, pos_y):
+                if (
+                    new_value < agents[pos_y][pos_x - 1]
+                    or agents[pos_y][pos_x - 1] == 0
+                ):
+                    agents[pos_y][pos_x - 1] = new_value
+                    tree.append((pos_x - 1, pos_y))
+
+        pos_x, pos_y = self.config["EXIT"]
+
+        road: list[str] = []
+        value: int = agents[pos_y][pos_x]
+        # create the exit path from the en
+        while value != 1:
+            value = agents[pos_y][pos_x]
+            shortest: str = ""
+
+            if not get_north(array, pos_x, pos_y):
+                if value > agents[pos_y - 1][pos_x]:
+                    value = agents[pos_y - 1][pos_x]
+                    shortest = "S"
+
+            if not get_east(array, pos_x, pos_y):
+                if value > agents[pos_y][pos_x + 1]:
+                    value = agents[pos_y][pos_x + 1]
+                    shortest = "W"
+
+            if not get_south(array, pos_x, pos_y):
+                if value > agents[pos_y + 1][pos_x]:
+                    value = agents[pos_y + 1][pos_x]
+                    shortest = "N"
+
+            if not get_west(array, pos_x, pos_y):
+                if value > agents[pos_y][pos_x - 1]:
+                    value = agents[pos_y][pos_x - 1]
+                    shortest = "E"
+
+            match shortest:
+                case "S":
+                    pos_y -= 1
+                case "W":
+                    pos_x += 1
+                case "N":
+                    pos_y += 1
+                case "E":
+                    pos_x -= 1
+                case _:
+                    raise MazeGenerateError(
+                        f"Impossible road occured: {''.join(road)}"
+                    )
+
+            road.append(shortest)
+        return "".join(road[::-1])
+
+    @staticmethod
+    def create_wall(
+        array: list[list[int]],
+        targets: tuple[tuple[int, int], tuple[int, int]]
+    ) -> None:
+        """ create a wall beetwin two position """
+        """ Usage: assure the unperfect maze easily,
+            in case of same start area for end/start,
+            all junction beetwin start and end area are stored
+            and a passage is created at end """
+
+        target: tuple[int, int]
+        sender: tuple[int, int]
+        target_x: int
+        target_y: int
+        sender_x: int
+        sender_y: int
+        target, sender = targets
+        target_x, target_y = target
+        sender_x, sender_y = sender
+        if target_x == sender_x:
+            if target_y > sender_y:
+                # target at down
+                array[target_y][target_x] += 0b0001
+                array[sender_y][sender_x] += 0b0100
             else:
-                print("method used: Unperfect")
-
-            print("seed used :")
-            if config["SEED"] != "Random":
-                random.seed(config["SEED"])
-                print(config["SEED"])
+                # target at up
+                array[target_y][target_x] += 0b0100
+                array[sender_y][sender_x] += 0b0001
+        else:
+            if target_x > sender_x:
+                # target at right
+                array[target_y][target_x] += 0b1000
+                array[sender_y][sender_x] += 0b0010
             else:
-                seed = random.randint(0, 10**4000)
-                random.seed(seed)
-                print(seed)
+                # target at left
+                array[target_y][target_x] += 0b0010
+                array[sender_y][sender_x] += 0b1000
 
-            # ------------------------------------------ PRIME LIST SETUP
+    @staticmethod
+    def destroy_wall(
+        array: list[list[int]],
+        targets: tuple[tuple[int, int], tuple[int, int]]
+    ) -> None:
+        """ destoy a wall beetwin two position """
 
-            for i in range(config["HEIGHT"]):
-                self.prime_list[i][-1] = False
+        target: tuple[int, int]
+        sender: tuple[int, int]
+        target_x: int
+        target_y: int
+        sender_x: int
+        sender_y: int
+        target, sender = targets
+        target_x, target_y = target
+        sender_x, sender_y = sender
+        if target_x == sender_x:
+            if target_y > sender_y:
+                # target at down
+                array[target_y][target_x] -= 0b0001
+                array[sender_y][sender_x] -= 0b0100
+            else:
+                # target at up
+                array[target_y][target_x] -= 0b0100
+                array[sender_y][sender_x] -= 0b0001
+        else:
+            if target_x > sender_x:
+                # target at right
+                array[target_y][target_x] -= 0b1000
+                array[sender_y][sender_x] -= 0b0010
+            else:
+                # target at left
+                array[target_y][target_x] -= 0b0010
+                array[sender_y][sender_x] -= 0b1000
 
-                self.array.append([0b0] * (config["WIDTH"]))
-                self.array[i][0] += 0b1000
-                self.array[i][config["WIDTH"] - 1] += 0b0010
+    def setup_agents(
+                self, is_perfect: bool
+            ) -> tuple[list[list[int]], set[tuple[int, int]]]:
+        """ setup agents for the exploration """
+        """ Usage: here agents just communicate common origin """
 
-            for i in range(config["WIDTH"]):
-                self.prime_list[-1][i] = False
+        agents: list[list[int]] = [
+            [0 for _ in range(self.config["WIDTH"])]
+            for _ in range(self.config["HEIGHT"])
+        ]
 
-                self.array[0][i] += 0b0001
-                self.array[config["HEIGHT"] - 1][i] += 0b0100
+        entry_x: int
+        entry_y: int
+        entry_x, entry_y = self.config["ENTRY"]
+        agents[entry_y][entry_x] = 1
+        start: set[tuple[int, int]] = {self.config["ENTRY"]}
+        if not is_perfect:
+            exit_x: int
+            exit_y: int
+            exit_x, exit_y = self.config["EXIT"]
+            agents[exit_y][exit_x] = 2
+            start.update({self.config["EXIT"]})
+        return (agents, start)
 
-            # ------------------------------------------- GENERATE
+    @staticmethod
+    def check_process(
+                    wall_check: Callable[..., int],
+                    array: list[list[int]],
+                    pos_x: int,
+                    pos_y: int,
+                    branch: tuple[int, int],
 
-            self.generate(self.config["SHAPE"])
+                    prime_list: list[list[bool]],
+                    targets: dict[tuple[int, int], tuple[int, int]],
+                    agent_value: int,
 
-            self.show()
+                    agents: list[list[int]],
+                    tree: set[tuple[int, int]],
+                    common: set[frozenset[tuple[int, int]]],
+                    destroy_wall: Callable[..., None],
+                    create_wall: Callable[..., None]
+                ) -> None:
+        """ all the cheking process for the generation """
 
-            self.road: str = ""
-            try:
-                self.road = self.resolve()
-            except MazeGenerateError as e:
-                print("RESOLVE FAILED", e)
-            if self.road:
-                print(end="MAZE RESOLVED : ")
-                print(self.road)
+        if prime_list[pos_y][pos_x]:
+            target_value: int = agents[pos_y][pos_x]
+        # -------------------------- CHECKS FOR UNPERFECT
 
-            self.set_road_show()
-            #self.show_pretty(True)
-            self.show_pretty(False)
-            self.create_file(self.road)
+            if target_value and target_value != agent_value:
+                if wall_check(array, *branch):
+                    common.add(frozenset({(pos_x, pos_y), branch}))
+                else:
+                    common.add(frozenset({(pos_x, pos_y), branch}))
+                    create_wall(
+                            array, ((pos_x, pos_y), branch)
+                           )
+                if (pos_x, pos_y) in targets.keys():
+                    targets.pop((pos_x, pos_y))
 
-        @func_timer("creating file")
-        def create_file(self, road: str) -> None:
-            """ create the file with maze, road to exit, entry and exit pos """
+        # -------------------------- CHECKS FOR EXPLORATION
+            if not target_value:
+                targets.update({(pos_x, pos_y): branch})
+                if not wall_check(array, *branch):
+                    agents[pos_y][pos_x] = agent_value
+                    tree.add((pos_x, pos_y))
 
-            with open(self.config["OUTPUT_FILE"], "w") as file:
-                file.write(self.create_string())
-                file.write("\n")
+    def maze_explore_and_merge(self) -> None:
+        """ main generation function
+        explore area, create a passage, and do it again """
+        """ can generate perfect or not maze with the setting"""
 
-                x, y = self.config["ENTRY"]
-                file.write(f"{x},{y}\n")
-                x, y = self.config["EXIT"]
-                file.write(f"{x},{y}\n")
+        agents: list[list[int]]
+        targets: dict[tuple[int, int], tuple[int, int]]
+        tree: set[tuple[int, int]]
+        common: set[frozenset[tuple[int, int]]] = set()
 
-                file.write(self.road)
+        get_north: Callable[..., int] = MazeGenerator.fast_get_north
+        get_east: Callable[..., int] = MazeGenerator.fast_get_east
+        get_south: Callable[..., int] = MazeGenerator.fast_get_south
+        get_west: Callable[..., int] = MazeGenerator.fast_get_west
+        destroy_wall: Callable[..., None] = MazeGenerator.destroy_wall
+        create_wall: Callable[..., None] = MazeGenerator.create_wall
+        check_process: Callable[..., None] = self.check_process
 
-        def create_string(self) -> str:
-            """ create the hexadecimal maze string """
-            out: list[str] = []
-            for elem in self.array:
-                for num in elem:
-                    out.append(str("{0:x}".format(num)).capitalize())
-                out.append("\n")
-            return "".join(out)
+        targets = {}
+        agents, tree = self.setup_agents(self.config["PERFECT"])
+        prime_list: list[list[bool]] = self.prime_list
+        array: list[list[int]] = self.array
 
-        def set_road_show(self) -> None:
-            agents: list[list[int]] = [
-                ["x" for _ in range(self.config["WIDTH"])]
-                for _ in range(self.config["HEIGHT"])
-            ]
-            pos_x, pos_y = self.config["ENTRY"]
-            agents[pos_y][pos_x] = 5
-            for elem in self.road:
-                match elem:
-                    case "S":
-                        pos_y += 1
-                    case "W":
-                        pos_x -= 1
-                    case "N":
-                        pos_y -= 1
-                    case "E":
-                        pos_x += 1
-                try:
-                    agents[pos_y][pos_x] = 0
-                except Exception:
-                    break
-            pos_x, pos_y = self.config["EXIT"]
-            agents[pos_y][pos_x] = 3
-            self.agents = agents
-
-        def show(self) -> None:
-            for elem in self.array:
-                for num in elem:
-                    print(str("{0:x}".format(num)).capitalize(), end=" ")
-                print("")
-
-        def show_pretty(self, values: bool = False) -> None:
-
-            i: int
-            j: int = 0
-            for elem in self.array:
-                line1 = ""
-                line2 = ""
-                line3 = ""
-                i = 0
-                for num in elem:
-                    s1 = [" ", " ", " ", " "]
-                    s2 = [" ", " ", " ", " "]
-                    s3 = [" ", " ", " ", " "]
-
-                    if bin(num % 2) == bin(1):
-                        s1 = ["o", "-", "-", "o"]
-                    num = int(num / 2)
-                    if bin(num % 2) == bin(1):
-                        s1[3] = "o"
-                        s2[3] = "|"
-                        s3[3] = "o"
-                    num = int(num / 2)
-                    if bin(num % 2) == bin(1):
-                        s3 = ["o", "-", "-", "o"]
-                    num = int(num / 2)
-                    if bin(num % 2) == bin(1):
-                        s1[0] = "o"
-                        s2[0] = "|"
-                        s3[0] = "o"
-                    num = int(num / 2)
-                    if bin(num % 2) == bin(1):
-                        s2[1] = "X"
-                        s2[2] = "X"
-
-                    if values and isinstance(self.agents[j][i], (int, float)):
-                        s2[2] = str(self.agents[j][i] % 10)
-                        s2[1] = str(self.agents[j][i] // 10 % 10)
-
-                    def list_in_str(data: list[str]) -> str:
-                        out = ""
-                        for elem in data:
-                            out += elem
-                        return out
-
-                    line1 += list_in_str(s1)
-                    line2 += list_in_str(s2)
-                    line3 += list_in_str(s3)
-                    i += 1
-                print(line1)
-                print(line2)
-                print(line3)
-                j += 1
-
-        def get_north(self, shift_x: int = 0, shift_y: int = 0) -> str:
-            """ get the north wall bit. with few parameters """
-            return bin(
-                    (self.array[self.pos_y + shift_y][self.pos_x + shift_x]
-                     ) >> 0 & 1)
-
-        def get_east(self, shift_x: int = 0, shift_y: int = 0) -> str:
-            """ get the east wall bit. with few parameters """
-            return bin(
-                    (self.array[self.pos_y + shift_y][self.pos_x + shift_x]
-                     ) >> 1 & 1)
-
-        def get_south(self, shift_x: int = 0, shift_y: int = 0) -> str:
-            """ get the north wall bit. with few parameters """
-            return bin(
-                    (self.array[self.pos_y + shift_y][self.pos_x + shift_x]
-                     ) >> 2 & 1)
-
-        def get_west(self, shift_x: int = 0, shift_y: int = 0) -> str:
-            """ get the north wall bit. with few parameters """
-            return bin(
-                    (self.array[self.pos_y + shift_y][self.pos_x + shift_x]
-                     ) >> 3 & 1)
-
-        @staticmethod
-        def fast_get_north(
-            array: list[list[int]], shift_x: int = 0, shift_y: int = 0
-        ) -> str:
-            """ get the north wall bit """
-            """ optimised for local binding and no lookup """
-            return bin((array[shift_y][shift_x]) >> 0 & 1)
-
-        @staticmethod
-        def fast_get_east(
-            array: list[list[int]], shift_x: int = 0, shift_y: int = 0
-        ) -> str:
-            """ get the east wall bit """
-            """ optimised for local binding and no lookup """
-            return bin((array[shift_y][shift_x]) >> 1 & 1)
-
-        @staticmethod
-        def fast_get_south(
-            array: list[list[int]], shift_x: int = 0, shift_y: int = 0
-        ) -> str:
-            """ get the south wall bit """
-            """ optimised for local binding and no lookup """
-            return bin((array[shift_y][shift_x]) >> 2 & 1)
-
-        @staticmethod
-        def fast_get_west(
-            array: list[list[int]], shift_x: int = 0, shift_y: int = 0
-        ) -> str:
-            """ get the west wall bit """
-            """ optimised for local binding and no lookup """
-            return bin((array[shift_y][shift_x]) >> 3 & 1)
-
-        @func_timer("resolving")
-        def resolve(self) -> str:
-            """ resolve the maze with agents communication """
-            """Usage: each agent give the distance beetwin him and the start"""
-            """ if an agent have differents possibility
-            he keep the shortest way """
-
-            agents: list[list[int]] = [
-                [0 for _ in range(self.config["WIDTH"])]
-                for _ in range(self.config["HEIGHT"])
-            ]
-
-            tree: list[tuple[int, int]]
-
-            get_north = MazeGenerator.UnperfectMaze.fast_get_north
-            get_east = MazeGenerator.UnperfectMaze.fast_get_east
-            get_south = MazeGenerator.UnperfectMaze.fast_get_south
-            get_west = MazeGenerator.UnperfectMaze.fast_get_west
-            array = self.array
-
-            pos_x, pos_y = self.config["ENTRY"]
-
-            tree = [(pos_x, pos_y)]
-            agents[pos_y][pos_x] = 1
-            temp_i = 0
-            # create the distances map
+        # - ALL AREAS WHILE
+        while tree:
+            # - AREA EXPLORATION WHILE
             while tree:
-                pos_x, pos_y = tree.pop(0)
-                new_value = agents[pos_y][pos_x] + 1
+                new_branch: tuple[int, int] = random.choice(list(tree))
+                tree.remove(new_branch)
+                pos_x: int
+                pos_y: int
+                pos_x, pos_y = new_branch
 
-                if get_north(array, pos_x, pos_y) == bin(0):
-                    if (
-                        new_value < agents[pos_y - 1][pos_x]
-                        or agents[pos_y - 1][pos_x] == 0
-                    ):
-                        agents[pos_y - 1][pos_x] = new_value
-                        tree.append((pos_x, pos_y - 1))
+                if new_branch in targets:
+                    targets.pop(new_branch)
 
-                if get_east(array, pos_x, pos_y) == bin(0):
-                    if (
-                        new_value < agents[pos_y][pos_x + 1]
-                        or agents[pos_y][pos_x + 1] == 0
-                    ):
-                        agents[pos_y][pos_x + 1] = new_value
-                        tree.append((pos_x + 1, pos_y))
+                agent_value: int = agents[pos_y][pos_x]
 
-                if get_south(array, pos_x, pos_y) == bin(0):
-                    if (
-                        new_value < agents[pos_y + 1][pos_x]
-                        or agents[pos_y + 1][pos_x] == 0
-                    ):
-                        agents[pos_y + 1][pos_x] = new_value
-                        tree.append((pos_x, pos_y + 1))
+                check_process(
+                        get_north,
+                        array,
+                        pos_x,
+                        pos_y - 1,
+                        new_branch,
 
-                if get_west(array, pos_x, pos_y) == bin(0):
-                    if (
-                        new_value < agents[pos_y][pos_x - 1]
-                        or agents[pos_y][pos_x - 1] == 0
-                    ):
-                        agents[pos_y][pos_x - 1] = new_value
-                        tree.append((pos_x - 1, pos_y))
-                temp_i += 1
+                        prime_list,
+                        targets,
+                        agent_value,
 
-            pos_x, pos_y = self.config["EXIT"]
+                        agents,
+                        tree,
+                        common,
+                        destroy_wall,
+                        create_wall
+                        )
+                check_process(
+                        get_east,
+                        array,
+                        pos_x + 1,
+                        pos_y,
+                        new_branch,
 
-            temp_i = 0
-            road: list[str] = []
-            value: float = agents[pos_y][pos_x]
-            # create the exit path from the en
-            while value != 1:
-                value = agents[pos_y][pos_x]
-                shortest: str = ""
+                        prime_list,
+                        targets,
+                        agent_value,
 
-                if get_north(array, pos_x, pos_y) == bin(0):
-                    if value > agents[pos_y - 1][pos_x]:
-                        value = agents[pos_y - 1][pos_x]
-                        shortest = "S"
+                        agents,
+                        tree,
+                        common,
+                        destroy_wall,
+                        create_wall
+                        )
+                check_process(
+                        get_south,
+                        array,
+                        pos_x,
+                        pos_y + 1,
+                        new_branch,
 
-                if get_east(array, pos_x, pos_y) == bin(0):
-                    if value > agents[pos_y][pos_x + 1]:
-                        value = agents[pos_y][pos_x + 1]
-                        shortest = "W"
+                        prime_list,
+                        targets,
+                        agent_value,
 
-                if get_south(array, pos_x, pos_y) == bin(0):
-                    if value > agents[pos_y + 1][pos_x]:
-                        value = agents[pos_y + 1][pos_x]
-                        shortest = "N"
+                        agents,
+                        tree,
+                        common,
+                        destroy_wall,
+                        create_wall
+                        )
+                check_process(
+                        get_west,
+                        array,
+                        pos_x - 1,
+                        pos_y,
+                        new_branch,
 
-                if get_west(array, pos_x, pos_y) == bin(0):
-                    if value > agents[pos_y][pos_x - 1]:
-                        value = agents[pos_y][pos_x - 1]
-                        shortest = "E"
+                        prime_list,
+                        targets,
+                        agent_value,
 
-                match shortest:
-                    case "S":
-                        pos_y -= 1
-                    case "W":
-                        pos_x += 1
-                    case "N":
-                        pos_y += 1
-                    case "E":
-                        pos_x -= 1
-                    case _:
-                        raise MazeGenerateError(
-                            f"Impossible road occured: {''.join(road)}"
+                        agents,
+                        tree,
+                        common,
+                        destroy_wall,
+                        create_wall
                         )
 
-                road.append(shortest)
-            return "".join(road[::-1])
+            if len(targets) > 0:
+                target: tuple[int, int]
+                sender: tuple[int, int]
+                target, sender = random.sample(
+                                    list(targets.items()), 1)[0]
+                targets.pop(target)
+                tree = {target}
+                agents[target[1]][target[0]] = \
+                    agents[sender[1]][sender[0]]
+                destroy_wall(array, (target, sender))
 
-        @staticmethod
-        def create_wall(
-            array: list[list[int]],
-            targets: tuple[tuple[int, int], tuple[int, int]]
-        ) -> None:
-            """ create a wall beetwin two position """
-            """ Usage: assure the unperfect maze easily,
-                in case of same start area for end/start,
-                all junction beetwin start and end area are stored
-                and a passage is created at end """
+        if not self.config["PERFECT"]:
+            common_list: list[frozenset[tuple[int, int]]] = list(common)
+            sample: frozenset[tuple[int, int]] = random.choice(common_list)
+            common_list.remove(sample)
+            tar: tuple[int, int]
+            src: tuple[int, int]
+            tar, src = sample
+            destroy_wall(array, (tar, src))
 
-            target, sender = targets
-            target_x, target_y = target
-            sender_x, sender_y = sender
-            if target_x == sender_x:
-                if target_y > sender_y:
-                    # target at down
-                    array[target_y][target_x] += 0b0001
-                    array[sender_y][sender_x] += 0b0100
-                else:
-                    # target at up
-                    array[target_y][target_x] += 0b0100
-                    array[sender_y][sender_x] += 0b0001
-            else:
-                if target_x > sender_x:
-                    # target at right
-                    array[target_y][target_x] += 0b1000
-                    array[sender_y][sender_x] += 0b0010
-                else:
-                    # target at left
-                    array[target_y][target_x] += 0b0010
-                    array[sender_y][sender_x] += 0b1000
+            sample = random.choice(common_list)
+            tar, src = sample
+            destroy_wall(array, (tar, src))
 
-        @staticmethod
-        def destroy_wall(
-            array: list[list[int]],
-            targets: tuple[tuple[int, int], tuple[int, int]]
-        ) -> None:
-            """ destoy a wall beetwin two position """
+        return
 
-            target, sender = targets
-            target_x, target_y = target
-            sender_x, sender_y = sender
-            if target_x == sender_x:
-                if target_y > sender_y:
-                    # target at down
-                    array[target_y][target_x] -= 0b0001
-                    array[sender_y][sender_x] -= 0b0100
-                else:
-                    # target at up
-                    array[target_y][target_x] -= 0b0100
-                    array[sender_y][sender_x] -= 0b0001
-            else:
-                if target_x > sender_x:
-                    # target at right
-                    array[target_y][target_x] -= 0b1000
-                    array[sender_y][sender_x] -= 0b0010
-                else:
-                    # target at left
-                    array[target_y][target_x] -= 0b0010
-                    array[sender_y][sender_x] -= 0b1000
-
-        def setup_agents(
-                    self, is_perfect: bool
-                ) -> tuple[list[list[int]], set[tuple[int, int]]]:
-            """ setup agents for the exploration """
-            """ Usage: here agents just communicate common origin """
-
-            agents: list[list[int]] = [
-                [0 for _ in range(self.config["WIDTH"])]
-                for _ in range(self.config["HEIGHT"])
-            ]
-
-            entry_x, entry_y = self.config["ENTRY"]
-            agents[entry_y][entry_x] = 1
-            start: set[tuple[int, int]] = {self.config["ENTRY"]}
-            if not is_perfect:
-                exit_x, exit_y = self.config["EXIT"]
-                agents[exit_y][exit_x] = 2
-                start.update({self.config["EXIT"]})
-            return (agents, start)
-
-        @staticmethod
-        def check_process(
-                        wall_check: Callable[..., str],
-                        array: list[list[int]],
-                        pos_x: int,
-                        pos_y: int,
-                        branch: tuple[int, int],
-
-                        prime_list: list[list[int]],
-                        targets: dict[tuple[int, int], tuple[int, int]],
-                        agent_value: int,
-
-                        agents: list[list[int]],
-                        tree: set[tuple[int, int]],
-                        common: set[frozenset[tuple[int, int]]],
-                        destroy_wall: Callable[..., None],
-                        create_wall: Callable[..., None]
-                    ) -> None:
-            """ all the cheking process for the generation """
-
-            if prime_list[pos_y][pos_x]:
-                target_value = agents[pos_y][pos_x]
-            # -------------------------- CHECKS FOR UNPERFECT
-
-                if target_value and target_value != agent_value:
-                    if wall_check(array, *branch) == bin(1):
-                        common.add(frozenset({(pos_x, pos_y), branch}))
-                    else:
-                        common.add(frozenset({(pos_x, pos_y), branch}))
-                        create_wall(
-                                array, ((pos_x, pos_y), branch)
-                               )
-                    if (pos_x, pos_y) in targets.keys():
-                        targets.pop((pos_x, pos_y))
-
-            # -------------------------- CHECKS FOR EXPLORATION
-                if not target_value:
-                    targets.update({(pos_x, pos_y): branch})
-                    if wall_check(array, *branch) == bin(0):
-                        agents[pos_y][pos_x] = agent_value
-                        tree.add((pos_x, pos_y))
-
-        @func_timer("generating")
-        def maze_explore_and_merge(self) -> None:
-            """ main generation function
-            explore area, create a passage, and do it again """
-            """ can generate perfect or not maze with the setting"""
-
-            agents: list[list[int]]
-            targets: dict[tuple[int, int], tuple[int, int]]
-            tree: set[tuple[int, int]]
-            common: set[frozenset[tuple[int, int]]] = set()
-
-            get_north = MazeGenerator.UnperfectMaze.fast_get_north
-            get_east = MazeGenerator.UnperfectMaze.fast_get_east
-            get_south = MazeGenerator.UnperfectMaze.fast_get_south
-            get_west = MazeGenerator.UnperfectMaze.fast_get_west
-            destroy_wall = MazeGenerator.UnperfectMaze.destroy_wall
-            create_wall = MazeGenerator.UnperfectMaze.create_wall
-            check_process = self.check_process
-
-            targets = {}
-            agents, tree = self.setup_agents(self.config["PERFECT"])
-            prime_list = self.prime_list
-            array = self.array
-
-            # - ALL AREAS WHILE
-            while tree:
-                # - AREA EXPLORATION WHILE
-                while tree:
-                    new_branch = random.choice(list(tree))
-                    tree.remove(new_branch)
-                    pos_x, pos_y = new_branch
-
-                    if new_branch in targets:
-                        targets.pop(new_branch)
-
-                    agent_value = agents[pos_y][pos_x]
-
-                    check_process(
-                            get_north,
-                            array,
-                            pos_x,
-                            pos_y - 1,
-                            new_branch,
-
-                            prime_list,
-                            targets,
-                            agent_value,
-
-                            agents,
-                            tree,
-                            common,
-                            destroy_wall,
-                            create_wall
-                            )
-                    check_process(
-                            get_east,
-                            array,
-                            pos_x + 1,
-                            pos_y,
-                            new_branch,
-
-                            prime_list,
-                            targets,
-                            agent_value,
-
-                            agents,
-                            tree,
-                            common,
-                            destroy_wall,
-                            create_wall
-                            )
-                    check_process(
-                            get_south,
-                            array,
-                            pos_x,
-                            pos_y + 1,
-                            new_branch,
-
-                            prime_list,
-                            targets,
-                            agent_value,
-
-                            agents,
-                            tree,
-                            common,
-                            destroy_wall,
-                            create_wall
-                            )
-                    check_process(
-                            get_west,
-                            array,
-                            pos_x - 1,
-                            pos_y,
-                            new_branch,
-
-                            prime_list,
-                            targets,
-                            agent_value,
-
-                            agents,
-                            tree,
-                            common,
-                            destroy_wall,
-                            create_wall
-                            )
-
-                if len(targets) > 0:
-                    target, sender = random.sample(
-                                        list(targets.items()), 1)[0]
-                    targets.pop(target)
-                    tree = {target}
-                    agents[target[1]][target[0]] = \
-                        agents[sender[1]][sender[0]]
-                    destroy_wall(array, (target, sender))
-
-            if not self.config["PERFECT"]:
-                common_list = list(common)
-                sample = random.choice(common_list)
-                common_list.remove(sample)
-                tar, src = sample
-                print("test", (tar, src))
-                destroy_wall(array, (tar, src))
-
-                sample = random.choice(common_list)
-                tar, src = sample
-                destroy_wall(array, (tar, src))
-
+    def draw_x(self, shift_x: int = 0, shift_y: int = 0) -> None:
+        """ draw a horizontal line """
+        if self.pos_x + shift_x < 0 or self.pos_y + shift_y < 0:
             return
 
-        def draw_x(self, shift_x: int = 0, shift_y: int = 0) -> None:
-            """ draw a horizontal line """
-            if self.pos_x + shift_x < 0 or self.pos_y + shift_y < 0:
-                return
+        try:
+            if self.get_north(
+                    shift_x, shift_y + 1) != bin(1) and self.get_south(
+                shift_x, shift_y
+            ) != bin(1):
+                self.array[
+                        self.pos_y + shift_y][
+                                self.pos_x + shift_x] += 0b0100
+                self.array[
+                        self.pos_y + shift_y + 1][
+                                self.pos_x + shift_x] += 0b001
+        except Exception:
+            return
 
-            try:
-                if self.get_north(
-                        shift_x, shift_y + 1) != bin(1) and self.get_south(
-                    shift_x, shift_y
-                ) != bin(1):
-                    self.array[
-                            self.pos_y + shift_y][
-                                    self.pos_x + shift_x] += 0b0100
-                    self.array[
-                            self.pos_y + shift_y + 1][
-                                    self.pos_x + shift_x] += 0b001
-            except Exception:
-                return
+    def draw_y(self, shift_x: int = 0, shift_y: int = 0) -> None:
+        """ draw a vertical line """
+        if self.pos_x + shift_x < 0 or self.pos_y + shift_y < 0:
+            return
 
-        def draw_y(self, shift_x: int = 0, shift_y: int = 0) -> None:
-            """ draw a vertical line """
-            if self.pos_x + shift_x < 0 or self.pos_y + shift_y < 0:
-                return
+        try:
+            if self.get_east(shift_x, shift_y) != bin(1) and self.get_west(
+                shift_x + 1, shift_y
+            ) != bin(1):
+                self.array[self.pos_y + shift_y][
+                        self.pos_x + shift_x] += 0b0010
+                self.array[self.pos_y + shift_y][
+                        self.pos_x + 1 + shift_x] += 0b1000
+        except Exception:
+            return
 
-            try:
-                if self.get_east(shift_x, shift_y) != bin(1) and self.get_west(
-                    shift_x + 1, shift_y
-                ) != bin(1):
-                    self.array[self.pos_y + shift_y][
-                            self.pos_x + shift_x] += 0b0010
-                    self.array[self.pos_y + shift_y][
-                            self.pos_x + 1 + shift_x] += 0b1000
-            except Exception:
-                return
+    def get_circle_len(
+        self, size_x: int = 0, size_y: int = 0, stairs: int = 0
+    ) -> dict[str, int]:
+        """ get circle len for drawing calculation """
 
-        def get_circle_len(
-            self, size_x: int = 0, size_y: int = 0, stairs: int = 0
-        ) -> dict[str, int]:
-            """ get circle len for drawing calculation """
+        len_x: int = ((stairs - 2) * 2) + size_x + 0
+        len_y: int = ((stairs - 2) * 2) + size_y + 0
 
-            len_x: int = ((stairs - 2) * 2) + size_x + 0
-            len_y: int = ((stairs - 2) * 2) + size_y + 0
+        return {"x": len_x, "y": len_y}
 
-            return {"x": len_x, "y": len_y}
+    def draw_circle(
+        self, size_x: int = 0, size_y: int = 0, stairs: int = 0
+    ) -> bool:
+        """ draw one circle with ajustable parameters """
 
-        def draw_circle(
-            self, size_x: int = 0, size_y: int = 0, stairs: int = 0
-        ) -> bool:
-            """ draw one circle with ajustable parameters """
+        lenth: dict[str, int] = self.get_circle_len(size_x, size_y, stairs)
+        self.pos_x -= int(lenth["x"] / 2) + 3
+        self.pos_y -= int(lenth["y"] / 2) + 3
+        self.pos_x += stairs + 1
+        if self.pos_x <= -10 and self.pos_y <= -10:
+            return False
 
-            lenth: dict[str, int] = self.get_circle_len(size_x, size_y, stairs)
-            self.pos_x -= int(lenth["x"] / 2) + 3
-            self.pos_y -= int(lenth["y"] / 2) + 3
-            self.pos_x += stairs + 1
-            if self.pos_x <= 0 and self.pos_y <= 0:
-                return False
-
-            for i in range(size_x):
-                self.draw_x()
-                self.pos_x += 1
-            for i in range(stairs):
-                self.draw_x()
-                self.draw_y(0, 1)
-                self.pos_x += 1
-                self.pos_y += 1
+        for i in range(size_x):
             self.draw_x()
-            for i in range(size_y):
-                self.draw_y(0, 1)
-                self.pos_y += 1
+            self.pos_x += 1
+        for i in range(stairs):
+            self.draw_x()
+            self.draw_y(0, 1)
+            self.pos_x += 1
+            self.pos_y += 1
+        self.draw_x()
+        for i in range(size_y):
+            self.draw_y(0, 1)
+            self.pos_y += 1
+        self.draw_x()
+        self.pos_x -= 1
+        self.pos_y += 1
+        for i in range(stairs):
+            self.draw_y()
             self.draw_x()
             self.pos_x -= 1
             self.pos_y += 1
-            for i in range(stairs):
-                self.draw_y()
-                self.draw_x()
-                self.pos_x -= 1
-                self.pos_y += 1
+        self.pos_y -= 1
+        for i in range(size_x):
+            self.draw_x()
+            self.pos_x -= 1
+        for i in range(stairs):
             self.pos_y -= 1
-            for i in range(size_x):
-                self.draw_x()
-                self.pos_x -= 1
-            for i in range(stairs):
-                self.pos_y -= 1
-                self.draw_y(0, 1)
-                self.draw_x()
-                self.pos_x -= 1
-            self.pos_y += 1
-            for i in range(size_y):
-                self.pos_y -= 1
-                self.draw_y()
+            self.draw_y(0, 1)
+            self.draw_x()
+            self.pos_x -= 1
+        self.pos_y += 1
+        for i in range(size_y):
+            self.pos_y -= 1
+            self.draw_y()
+        self.pos_x += 1
+        self.pos_y -= 1
+
+        for i in range(stairs):
+            self.draw_y()
+            self.draw_x()
+            self.pos_y -= 1
             self.pos_x += 1
-            self.pos_y -= 1
+        return True
 
-            for i in range(stairs):
-                self.draw_y()
-                self.draw_x()
-                self.pos_y -= 1
-                self.pos_x += 1
-            return True
+    def generate_circles(self) -> None:
+        """ draw the maximum circles in the maze area """
 
-        def generate_circles(self) -> None:
-            """ draw the maximum circles in the maze area """
+        start_x: int = int(self.config["WIDTH"] / 2)
+        start_y: int = int(self.config["HEIGHT"] / 2)
 
-            start_x: int = int(self.config["WIDTH"] / 2)
-            start_y: int = int(self.config["HEIGHT"] / 2)
-
+        self.pos_x = start_x
+        self.pos_y = start_y
+        self.draw_circle(2, 4, 3)
+        jump_x: int = 1
+        jump_y: int = 1
+        jump_stairs: int = 1
+        c_x: int = 4
+        c_y: int = 6
+        c_stairs: int = 3
+        check: bool = True
+        if self.config["WIDTH"] < 11 or self.config["HEIGHT"] < 9:
             self.pos_x = start_x
             self.pos_y = start_y
-            check = self.draw_circle(2, 4, 3)
-            jump_x = 1
-            jump_y = 1
-            jump_stairs = 1
-            c_x = 4
-            c_y = 6
-            c_stairs = 3
-            check = True
-            while check:
-                self.pos_x = start_x
-                self.pos_y = start_y
-                check = self.draw_circle(c_x, c_y, c_stairs)
-                c_stairs += jump_stairs
-                c_x += jump_x
-                c_y += jump_y
+            check = self.draw_circle(2, 1, 1)
+            self.pos_x = start_x
+            self.pos_y = start_y
+            check = self.draw_circle(2, 2, 2)
+        while check:
+            self.pos_x = start_x
+            self.pos_y = start_y
+            check = self.draw_circle(c_x, c_y, c_stairs)
+            c_stairs += jump_stairs
+            c_x += jump_x
+            c_y += jump_y
 
-        def generate_cells(self) -> None:
-            """ create a full wall maze area """
+    def generate_cells(self) -> None:
+        """ create a full wall maze area """
 
+        self.pos_x = 0
+        self.pos_y = 0
+
+        for elem in self.array:
+            i: int = 0
+            while i < len(elem):
+                elem[i] = 0b1111
+                i += 1
+
+    def generate_squares(self) -> None:
+        """ create larger squares than generate_cells funcion """
+
+        self.pos_x = 0
+        self.pos_y = 0
+
+        for self.pos_y in range(self.config["HEIGHT"]):
             self.pos_x = 0
-            self.pos_y = 0
-
-            for elem in self.array:
-                i = 0
-                while i < len(elem):
-                    elem[i] = 0b1111
-                    i += 1
-
-        def generate_squares(self) -> None:
-            """ create larger squares than generate_cells funcion """
-
-            self.pos_x = 0
-            self.pos_y = 0
-
-            for self.pos_y in range(self.config["HEIGHT"]):
-                self.pos_x = 0
-                while self.pos_x < self.config["WIDTH"]:
-                    if self.pos_x % 2 == 0:
-                        self.draw_y()
-                    if self.pos_y % 2 == 0:
-                        self.draw_x()
-                    self.pos_x += 1
-
-        def draw_cross(self) -> None:
-            """ draw two centered cross in the maze area,
-            one is horizontal/vertical
-            the second is rotated to 45° from the first one """
-
-            self.pos_x = 0
-            self.pos_y = 0
-
-            i = 0
-            self.pos_y = int(self.config["HEIGHT"] / 2)
-            self.pos_x = 0
-            while i < self.config["WIDTH"]:
-                self.draw_x()
+            while self.pos_x < self.config["WIDTH"]:
+                if self.pos_x % 2 == 0:
+                    self.draw_y()
+                if self.pos_y % 2 == 0:
+                    self.draw_x()
                 self.pos_x += 1
-                i += 1
-            i = 0
-            self.pos_x = int(self.config["WIDTH"] / 2)
-            self.pos_y = 0
-            while i < self.config["HEIGHT"]:
-                self.draw_y()
-                self.pos_y += 1
-                i += 1
 
-            i = 0
-            self.pos_x = 0
-            self.pos_y = 0
-            while i < self.config["HEIGHT"]:
-                self.draw_y(-1)
-                self.draw_x()
-                self.draw_y(self.config["WIDTH"] - i * 2 - 1)
-                self.draw_x(self.config["WIDTH"] - i * 2 - 1)
-                self.pos_x += 1
-                self.pos_y += 1
-                i += 1
+    def draw_cross(self) -> None:
+        """ draw two centered cross in the maze area,
+        one is horizontal/vertical
+        the second is rotated to 45° from the first one """
 
-        def draw_cube(self) -> None:
-            """ draw a cube on the maze area in the current location """
-            self.prime_list[self.pos_y][self.pos_x] = False
+        self.pos_x = 0
+        self.pos_y = 0
+
+        i: int = 0
+        self.pos_y = int(self.config["HEIGHT"] / 2)
+        self.pos_x = 0
+        while i < self.config["WIDTH"]:
             self.draw_x()
-            self.draw_x(0, -1)
+            self.pos_x += 1
+            i += 1
+        i = 0
+        self.pos_x = int(self.config["WIDTH"] / 2)
+        self.pos_y = 0
+        while i < self.config["HEIGHT"]:
             self.draw_y()
-            self.draw_y(-1, 0)
+            self.pos_y += 1
+            i += 1
 
-        def set_42_walls(self) -> None:
-            """ set the 42 sympol at the center of the screen """
-            from mazeinit import get_42_pos
+        i = 0
+        self.pos_x = 0
+        self.pos_y = 0
+        while i < self.config["HEIGHT"]:
+            self.draw_y(-1)
+            self.draw_x()
+            self.draw_y(self.config["WIDTH"] - i * 2 - 1)
+            self.draw_x(self.config["WIDTH"] - i * 2 - 1)
+            self.pos_x += 1
+            self.pos_y += 1
+            i += 1
 
-            positions = get_42_pos(self.config["WIDTH"], self.config["HEIGHT"])
+    def draw_cube(self) -> None:
+        """ draw a cube on the maze area in the current location """
+        self.prime_list[self.pos_y][self.pos_x] = False
+        self.draw_x()
+        self.draw_x(0, -1)
+        self.draw_y()
+        self.draw_y(-1, 0)
 
-            for self.pos_x, self.pos_y in positions:
-                self.draw_cube()
+    def set_42_walls(self) -> None:
+        """ set the 42 sympol at the center of the screen """
 
-        def generate(self, indicator: str) -> None:
-            """ generate the maze dependingly of the key-str used """
+        positions: list[tuple[int, int]]
+        positions = get_42_pos(self.config["WIDTH"], self.config["HEIGHT"])
 
-        #    if self.config["WIDTH"] == 1 or self.config["HEIGHT"] == 1:
-        #        self.config["PERFECT"] = True
-        #        indicator = "Line"
-        #    if self.config["PERFECT"]:
-        #        entries = 1
+        for self.pos_x, self.pos_y in positions:
+            self.draw_cube()
 
-            match indicator:
-                case "Circle":
-                    self.generate_circles()
-                    self.draw_cross()
-                case "Classic":
-                    self.generate_cells()
-                case "Square":
-                    self.generate_squares()
-                case "Line":
-                    return
-                case _:
-                    raise MazeGenerateError("unknow maze type")
-            self.set_42_walls()
-            self.maze_explore_and_merge()
+    def generate(self, indicator: str) -> None:
+        """ generate the maze dependingly of the key-str used """
+
+        if self.config["WIDTH"] == 1 or self.config["HEIGHT"] == 1:
+            self.config["PERFECT"] = True
+            indicator = "Line"
+
+        match indicator:
+            case "Circle":
+                self.generate_circles()
+                self.draw_cross()
+            case "Classic":
+                self.generate_cells()
+            case "Square":
+                self.generate_squares()
+            case "Line":
+                return
+            case _:
+                raise MazeGenerateError("unknow maze type")
+        self.set_42_walls()
+        self.maze_explore_and_merge()

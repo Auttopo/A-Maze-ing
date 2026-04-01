@@ -1,6 +1,6 @@
 
 import sys
-from typing import Any
+from typing import Any, TextIO
 from os.path import exists
 import random
 
@@ -11,8 +11,8 @@ def get_42_pos(width: int, height: int) -> list[tuple[int, int]]:
         return [(-1, -1)]
 
     pos_list: list[tuple[int, int]] = []
-    pos_x = int(width / 2) - 3
-    pos_y = int(height / 2) - 2
+    pos_x: int = int(width / 2) - 3
+    pos_y: int = int(height / 2) - 2
     for i in range(2):
         pos_list.append((pos_x, pos_y))
         pos_y += 1
@@ -67,11 +67,13 @@ class MazeInit():
             raise MazeConfigError(
                 f"Configuration file name '{file_name}' do not exist"
                 f", or the file is inaccessible")
+        file: TextIO
         with open(file_name, "r") as file:
             full_data: str = file.read()
             lines: list[str] = full_data.split("\n")
             for i, line in enumerate(lines, 1):
                 self.line_parser(line, i)
+
         self.keys_validation()
         self.data_validation()
 
@@ -93,7 +95,7 @@ class MazeInit():
 
     def keys_validation(self) -> None:
         trace: str = ""
-        valid_data = {
+        valid_data: set[str] = {
             "WIDTH", "HEIGHT", "ENTRY",
             "EXIT", "OUTPUT_FILE", "OUTPUT_FILE_OVERRIDE",
             "PERFECT", "SEED", "SHAPE"
@@ -169,11 +171,21 @@ class MazeInit():
         if not self()["OUTPUT_FILE"]:
             raise MazeConfigError("please set a output name file")
 
-        if exists(self()["OUTPUT_FILE"]):
-            if not self()["OUTPUT_FILE_OVERRIDE"]:
-                raise MazeConfigError(
-                    "please set a different output name file or set "
-                    "OUTPUT_FILE_OVERRIDE=True, this one already exist")
+        if not self()["OUTPUT_FILE_OVERRIDE"]:
+            i = 0
+            while i < 101:
+                if exists(self()["OUTPUT_FILE"]):
+                    self()["OUTPUT_FILE"] = self()["OUTPUT_FILE"] + "_1"
+                else:
+                    f_name = self()["OUTPUT_FILE"]
+                    print("this file name already exist. "
+                          f"new file name set to {f_name}",
+                          file=sys.stderr)
+                    break
+                i += 1
+            if i == 101:
+                raise MazeConfigError("too many files already created, "
+                                      "please make your folder clean")
 
     def data_validation(self) -> None:
 
@@ -184,13 +196,18 @@ class MazeInit():
             raise MazeConfigError("maze air need to be > 1")
 
         # --------------------------------- POS CHECK
+        if self.config["ENTRY"] == self.config["EXIT"]:
+            raise MazeConfigError("ENTRY and EXIT can't be the same")
         if self.config["WIDTH"] < 11 or self.config["HEIGHT"] < 9:
             print("42 not drawed, width < 11 or height < 9", file=sys.stderr)
+        illegal_pos: list[tuple[int, int]]
         illegal_pos = get_42_pos(self.config["WIDTH"], self.config["HEIGHT"])
         possibles: list[tuple[int, int]] = [
                 (x, y) for y in range(self()["HEIGHT"])
                 for x in range(self()["WIDTH"])
                 if (x, y) not in illegal_pos]
+        x: int
+        y: int
         if self()["ENTRY"] == "Random":
             x, y = random.choice(possibles)
             self().update({"ENTRY": (x, y)})

@@ -1,25 +1,7 @@
 
-import functools
 import random
-from datetime import datetime
-from typing import Any, Callable, TypedDict
-
-
-def func_timer(to_print: str) -> Callable[..., Any]:
-    """"""
-    def timing(func: Callable[..., Any]) -> Callable[..., Any]:
-        @functools.wraps(func)
-        def func_wrap(*args: Any, **kwargs: Any) -> Any:
-            time_start = datetime.now()
-            print(to_print, "start ...")
-            res: Any = func(*args, **kwargs)
-            time_end = datetime.now() - time_start
-            print(to_print, "time:", time_end.total_seconds(), "s")
-            return res
-
-        return func_wrap
-
-    return timing
+from typing import Callable, TypedDict
+from mazeinit import get_42_pos
 
 
 class MazeDict(TypedDict):
@@ -52,42 +34,19 @@ class MazeGenerator:
 
             self.config: MazeDict = config
             self.array: list[list[int]] = []
-            # self.memory: list[list[int]] = []
-            self.pos_x = 0
-            self.pos_y = 0
-            self.config_width = config["WIDTH"]
-            self.config_height = config["HEIGHT"]
+            self.road: str = ""
+            self.pos_x: int = 0
+            self.pos_y: int = 0
+            self.gen_count: int = 0
             self.prime_list: list[list[int]] = [
                 [True for _ in range(self.config["WIDTH"] + 1)]
                 for _ in range(self.config["HEIGHT"] + 1)
             ]
+            positions = get_42_pos(self.config["WIDTH"], self.config["HEIGHT"])
+            for self.pos_x, self.pos_y in positions:
+                self.prime_list[self.pos_y][self.pos_x] = False
 
-            # ------------------------------------------ SEED SETUP
-
-            from mazeinit import get_42_pos
-
-            positions: list[tuple[int, int]] = get_42_pos(
-                    self.config["WIDTH"], self.config["HEIGHT"])
-            print(positions)
-            print("entry:", config["ENTRY"])
-            print("exit:", config["EXIT"])
-            print("shape used:", config["SHAPE"])
-            if config["PERFECT"]:
-                print("method used: Perfect")
-            else:
-                print("method used: Unperfect")
-
-            print("seed used :")
-            if config["SEED"] != "Random":
-                random.seed(config["SEED"])
-                print(config["SEED"])
-            else:
-                seed = random.randint(0, 10**4000)
-                random.seed(seed)
-                print(seed)
-
-            # ------------------------------------------ PRIME LIST SETUP
-
+            # ----------------------------------- PRIME AND MAIN ARRAY SETUP
             for i in range(config["HEIGHT"]):
                 self.prime_list[i][-1] = False
 
@@ -104,24 +63,9 @@ class MazeGenerator:
             # ------------------------------------------- GENERATE
 
             self.generate(self.config["SHAPE"])
-
-            self.show()
-
-            self.road: str = ""
-            try:
-                self.road = self.resolve()
-            except MazeGenerateError as e:
-                print("RESOLVE FAILED", e)
-            if self.road:
-                print(end="MAZE RESOLVED : ")
-                print(self.road)
-
-            self.set_road_show()
-            #self.show_pretty(True)
-            self.show_pretty(False)
+            self.resolve()
             self.create_file(self.road)
 
-        @func_timer("creating file")
         def create_file(self, road: str) -> None:
             """ create the file with maze, road to exit, entry and exit pos """
 
@@ -144,90 +88,6 @@ class MazeGenerator:
                     out.append(str("{0:x}".format(num)).capitalize())
                 out.append("\n")
             return "".join(out)
-
-        def set_road_show(self) -> None:
-            agents: list[list[int]] = [
-                ["x" for _ in range(self.config["WIDTH"])]
-                for _ in range(self.config["HEIGHT"])
-            ]
-            pos_x, pos_y = self.config["ENTRY"]
-            agents[pos_y][pos_x] = 5
-            for elem in self.road:
-                match elem:
-                    case "S":
-                        pos_y += 1
-                    case "W":
-                        pos_x -= 1
-                    case "N":
-                        pos_y -= 1
-                    case "E":
-                        pos_x += 1
-                try:
-                    agents[pos_y][pos_x] = 0
-                except Exception:
-                    break
-            pos_x, pos_y = self.config["EXIT"]
-            agents[pos_y][pos_x] = 3
-            self.agents = agents
-
-        def show(self) -> None:
-            for elem in self.array:
-                for num in elem:
-                    print(str("{0:x}".format(num)).capitalize(), end=" ")
-                print("")
-
-        def show_pretty(self, values: bool = False) -> None:
-
-            i: int
-            j: int = 0
-            for elem in self.array:
-                line1 = ""
-                line2 = ""
-                line3 = ""
-                i = 0
-                for num in elem:
-                    s1 = [" ", " ", " ", " "]
-                    s2 = [" ", " ", " ", " "]
-                    s3 = [" ", " ", " ", " "]
-
-                    if bin(num % 2) == bin(1):
-                        s1 = ["o", "-", "-", "o"]
-                    num = int(num / 2)
-                    if bin(num % 2) == bin(1):
-                        s1[3] = "o"
-                        s2[3] = "|"
-                        s3[3] = "o"
-                    num = int(num / 2)
-                    if bin(num % 2) == bin(1):
-                        s3 = ["o", "-", "-", "o"]
-                    num = int(num / 2)
-                    if bin(num % 2) == bin(1):
-                        s1[0] = "o"
-                        s2[0] = "|"
-                        s3[0] = "o"
-                    num = int(num / 2)
-                    if bin(num % 2) == bin(1):
-                        s2[1] = "X"
-                        s2[2] = "X"
-
-                    if values and isinstance(self.agents[j][i], (int, float)):
-                        s2[2] = str(self.agents[j][i] % 10)
-                        s2[1] = str(self.agents[j][i] // 10 % 10)
-
-                    def list_in_str(data: list[str]) -> str:
-                        out = ""
-                        for elem in data:
-                            out += elem
-                        return out
-
-                    line1 += list_in_str(s1)
-                    line2 += list_in_str(s2)
-                    line3 += list_in_str(s3)
-                    i += 1
-                print(line1)
-                print(line2)
-                print(line3)
-                j += 1
 
         def get_north(self, shift_x: int = 0, shift_y: int = 0) -> str:
             """ get the north wall bit. with few parameters """
@@ -285,8 +145,7 @@ class MazeGenerator:
             """ optimised for local binding and no lookup """
             return bin((array[shift_y][shift_x]) >> 3 & 1)
 
-        @func_timer("resolving")
-        def resolve(self) -> str:
+        def resolve(self) -> None:
             """ resolve the maze with agents communication """
             """Usage: each agent give the distance beetwin him and the start"""
             """ if an agent have differents possibility
@@ -349,10 +208,10 @@ class MazeGenerator:
                 temp_i += 1
 
             pos_x, pos_y = self.config["EXIT"]
-
             temp_i = 0
             road: list[str] = []
             value: float = agents[pos_y][pos_x]
+
             # create the exit path from the en
             while value != 1:
                 value = agents[pos_y][pos_x]
@@ -393,7 +252,7 @@ class MazeGenerator:
                         )
 
                 road.append(shortest)
-            return "".join(road[::-1])
+            self.road = "".join(road[::-1])
 
         @staticmethod
         def create_wall(
@@ -519,7 +378,6 @@ class MazeGenerator:
                         agents[pos_y][pos_x] = agent_value
                         tree.add((pos_x, pos_y))
 
-        @func_timer("generating")
         def maze_explore_and_merge(self) -> None:
             """ main generation function
             explore area, create a passage, and do it again """
@@ -639,7 +497,6 @@ class MazeGenerator:
                 sample = random.choice(common_list)
                 common_list.remove(sample)
                 tar, src = sample
-                print("test", (tar, src))
                 destroy_wall(array, (tar, src))
 
                 sample = random.choice(common_list)
@@ -836,7 +693,6 @@ class MazeGenerator:
 
         def draw_cube(self) -> None:
             """ draw a cube on the maze area in the current location """
-            self.prime_list[self.pos_y][self.pos_x] = False
             self.draw_x()
             self.draw_x(0, -1)
             self.draw_y()
@@ -844,7 +700,6 @@ class MazeGenerator:
 
         def set_42_walls(self) -> None:
             """ set the 42 sympol at the center of the screen """
-            from mazeinit import get_42_pos
 
             positions = get_42_pos(self.config["WIDTH"], self.config["HEIGHT"])
 
@@ -854,11 +709,9 @@ class MazeGenerator:
         def generate(self, indicator: str) -> None:
             """ generate the maze dependingly of the key-str used """
 
-        #    if self.config["WIDTH"] == 1 or self.config["HEIGHT"] == 1:
-        #        self.config["PERFECT"] = True
-        #        indicator = "Line"
-        #    if self.config["PERFECT"]:
-        #        entries = 1
+            if self.config["WIDTH"] == 1 or self.config["HEIGHT"] == 1:
+                self.config["PERFECT"] = True
+                indicator = "Line"
 
             match indicator:
                 case "Circle":

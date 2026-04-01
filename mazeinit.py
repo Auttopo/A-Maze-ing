@@ -56,7 +56,7 @@ class MazeConfigError(Exception):
 
 class MazeInit():
 
-    def __call__(self) -> dict[str, str | int | bool]:
+    def __call__(self) -> dict[str, Any]:
         return self.config
 
     def __init__(self, file_name: str) -> None:
@@ -123,32 +123,33 @@ class MazeInit():
     @staticmethod
     def value_check(data: str, name: str) -> int:
         try:
-            data: int = int(data)
-            if data < 0:
+            idata: int = int(data)
+            if idata < 0:
                 raise
         except Exception:
             raise MazeConfigError(
                 f"invalid value {name}, need to be a positive integer")
-        return data
+        return idata
 
     def coordinates_check(self, data_str: str) -> None:
 
         ex: str = ""
         ey: str = ""
 
-        entry: list[str] = self()[data_str].split(",")
+        str_data: str = str(self()[data_str])
+        entry: list[str] = str_data.split(",")
         try:
             x: int = MazeInit.value_check(entry[0], data_str + "_X")
-            if x >= self()["WIDTH"]:
+            if x >= int(self()["WIDTH"]):
                 raise MazeConfigError(f"{data_str}_X need to be < WIDTH")
         except Exception as e:
-            ex = e
+            ex = str(e)
         try:
             y: int = MazeInit.value_check(entry[1], data_str + "_Y")
-            if y >= self()["HEIGHT"]:
+            if y >= int(self()["HEIGHT"]):
                 raise MazeConfigError(f"{data_str}_Y need to be < HEIGHT")
         except Exception as e:
-            ey = e
+            ey = str(e)
         if ex or ey:
             raise MazeConfigError(f"{ex} | {ey}")
         self().update({data_str: (x, y)})
@@ -186,7 +187,7 @@ class MazeInit():
         if self.config["WIDTH"] < 11 or self.config["HEIGHT"] < 9:
             print("42 not drawed, width < 11 or height < 9", file=sys.stderr)
         illegal_pos = get_42_pos(self.config["WIDTH"], self.config["HEIGHT"])
-        possibles: list[tuple[int]] = [
+        possibles: list[tuple[int, int]] = [
                 (x, y) for y in range(self()["HEIGHT"])
                 for x in range(self()["WIDTH"])
                 if (x, y) not in illegal_pos]

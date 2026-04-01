@@ -232,9 +232,5 @@ class MazeInit():
                         "SHAPE unknow type, possibilities "
                         ": Classic ; Circle ; Square ; Random")
         else:
-<<<<<<< HEAD
-            self().update({"SHAPE": random.choice(["Classic", "Circle", "Square"])})
-=======
             self().update({"SHAPE": random.choice(
                 ["Classic", "Circle", "Square"])})
->>>>>>> origin/generation

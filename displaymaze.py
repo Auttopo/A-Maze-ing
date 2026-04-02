@@ -24,7 +24,7 @@ class DisplayMaze:
 
         self.wall_size = 0.2
         self.wdw_percent = 0.4
-        self.h_menu = 22
+        self.h_menu = 25
         self.printable = True
 
     def initialize_maze_settings(
@@ -106,8 +106,10 @@ class DisplayMaze:
         self.h_img = self.rows * (self.cell_size + self.wall) + self.wall
         self.w_wdw = self.w_img + 20
         self.h_wdw = self.h_img + 20 + self.h_menu
-        self.w_offset = 10
-        self.h_offset = 10
+        if self.w_wdw < int(self.w * wdw_size):
+            self.w_wdw = int(self.w * wdw_size)
+        self.w_offset = int((self.w_wdw - self.w_img) / 2)
+        self.h_offset = int((self.h_wdw - self.h_menu - self.h_img) / 2)
 
     def menu_settings(self) -> None:
         """Create and print the menu in the window"""
@@ -116,7 +118,7 @@ class DisplayMaze:
         color = 0xFFFFFF
         options = [
             "1: Regenerate",
-            "2: Show/Hide path",
+            "2: Path",
             "3: Wall color",
             "4: Exit"
             ]

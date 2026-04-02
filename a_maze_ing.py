@@ -14,9 +14,11 @@ def main() -> None:
             raise MazeConfigError("Use as first argument a configuration file")
         init: dict[str, Any] = MazeInit(sys.argv[1])()
         maze = MazeGenerator(init)
+        maze.resolve()
         screen = DisplayMaze(
                 maze.array, maze.road, init['ENTRY'], init['EXIT'])
         screen.intialize_display_settings()
+        maze.create_file()
     except Exception as e:
         print("An error occured :", e, file=sys.stderr)
         if len(sys.argv) > 2 and sys.argv[2] == "traceback":

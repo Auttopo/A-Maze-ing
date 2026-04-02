@@ -13,7 +13,7 @@ class MazeDict(TypedDict):
     EXIT: tuple[int, int]
     OUTPUT_FILE: str
     PERFECT: bool
-    SEED: int
+    SEED: int | str
     SHAPE: str
     OUTPUT_FILE_OVERRIDE: bool
 
@@ -35,6 +35,7 @@ class MazeGenerator:
         self.array: list[list[int]] = []
         self.pos_x: int = 0
         self.pos_y: int = 0
+        self.road: str = ""
         self.prime_list: list[list[bool]] = [
             [True for _ in range(self.config["WIDTH"] + 1)]
             for _ in range(self.config["HEIGHT"] + 1)
@@ -43,12 +44,14 @@ class MazeGenerator:
         # ------------------------------------------ SEED SETUP
 
         self.seed: int
+        if not config.get("SEED"):
+            config.update({"SEED": "Random"})
         if config["SEED"] != "Random":
             random.seed(config["SEED"])
-            self.seed = config["SEED"]
+            seed = config["SEED"]
         else:
-            self.seed = random.randint(0, 10**4000)
-            random.seed(self.seed)
+            seed = random.randint(0, 10**4000)
+            random.seed(seed)
 
         # ------------------------------------------ PRIME LIST SETUP
 
@@ -69,12 +72,13 @@ class MazeGenerator:
 
         self.generate(self.config["SHAPE"])
 
-        self.road: str = ""
-        self.road = self.resolve()
+    def get_maze(self) -> None:
+        return self.array
 
-        self.create_file(self.road)
+    def update_config(self, new_data: dict[str, Any]) -> None:
+        self.config.update(new_data)
 
-    def create_file(self, road: str) -> None:
+    def create_file(self) -> None:
         """ create the file with maze, road to exit, entry and exit pos """
 
         with open(self.config["OUTPUT_FILE"], "w") as file:
@@ -83,10 +87,12 @@ class MazeGenerator:
 
             x: int
             y: int
-            x, y = self.config["ENTRY"]
-            file.write(f"{x},{y}\n")
-            x, y = self.config["EXIT"]
-            file.write(f"{x},{y}\n")
+            if self.config.get("ENTRY"):
+                x, y = self.config["ENTRY"]
+                file.write(f"{x},{y}\n")
+            if self.config.get("EXIT"):
+                x, y = self.config["EXIT"]
+                file.write(f"{x},{y}\n")
 
             file.write(self.road)
 
@@ -261,6 +267,8 @@ class MazeGenerator:
                     )
 
             road.append(shortest)
+
+        self.road = "".join(road[::-1])
         return "".join(road[::-1])
 
     @staticmethod
@@ -576,8 +584,8 @@ class MazeGenerator:
     ) -> dict[str, int]:
         """ get circle len for drawing calculation """
 
-        len_x: int = ((stairs - 2) * 2) + size_x + 0
-        len_y: int = ((stairs - 2) * 2) + size_y + 0
+        len_x: int = ((stairs - 2) * 2) + size_x
+        len_y: int = ((stairs - 2) * 2) + size_y
 
         return {"x": len_x, "y": len_y}
 

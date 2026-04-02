@@ -231,7 +231,6 @@ class DisplayMaze:
                 )
                 for k in range(0, 4):
                     self.data[offset + k] = color[k]
-        
 
     def draw_forty_two(self, color: tuple[int, int, int, int]) -> None:
         """Draw the forty-two symbol's walls"""
@@ -301,8 +300,7 @@ class DisplayMaze:
 
     def mykey(self, keynum: int, mystuff: Any) -> None:
         """Manages some operations related to key activation"""
-        # print(f"Got key {keynum}, and got my stuff back:")
-        # print(mystuff)
+
         if keynum == 32:
             self.m.mlx_mouse_hook(self.win_ptr, None, None)
 
@@ -328,7 +326,8 @@ class DisplayMaze:
             else:
                 self.path_visible = True
             self.draw_walls(self.wall_color)
-            self.draw_forty_two(self.wall_color)
+            if not (self.column < 11 or self.rows < 9):
+                self.draw_forty_two(self.wall_color)
             self.display(None)
 
         elif keynum == 52 or keynum == 65433:
@@ -346,7 +345,7 @@ class DisplayMaze:
         self.regenerate = False
         self.clean_image()
         self.draw_walls(self.wall_color)
-        if not (self.column < 9 or self.rows < 9):
+        if not (self.column < 11 or self.rows < 9):
             self.draw_forty_two(self.wall_color)
         self.color_a_case(self.entry[0], self.entry[1], self.entry_color)
         self.color_a_case(self.exit[0], self.exit[1], self.exit_color)
@@ -368,7 +367,7 @@ class DisplayMaze:
                 self.m.mlx_get_data_addr(self.img)
             )
             init = MazeInit('config.txt')
-            maze = MazeGenerator.UnperfectMaze(init())
+            maze = MazeGenerator(init())
             self.initialize_maze_settings(
                 maze.array, maze.road,
                 init.config['ENTRY'], init.config['EXIT']

@@ -55,7 +55,7 @@ class DisplayMaze:
                     "The maze can't be displayed, not readable or too big"
                     )
             self.win_ptr = self.m.mlx_new_window(
-                self.mlx_ptr, self.w_wdw, self.h_wdw, "toto"
+                self.mlx_ptr, self.w_wdw, self.h_wdw, "A_Maze_zing"
             )
             self.img = self.m.mlx_new_image(
                 self.mlx_ptr,
@@ -567,6 +567,7 @@ class DisplayMaze:
             )
             init = MazeInit('config.txt')
             maze = MazeGenerator(init())
+            maze.resolve()
             self.initialize_maze_settings(
                 maze.array, maze.road,
                 init.config['ENTRY'], init.config['EXIT']

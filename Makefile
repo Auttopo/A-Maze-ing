@@ -27,3 +27,5 @@ lint-strict:
 	. maze_env/bin/activate && \
 	python3 -m flake8 --exclude maze_env,mlx_files; \
 	python3 -m mypy . --strict
+
+.PHONY : install run debug clean lint lint-strict

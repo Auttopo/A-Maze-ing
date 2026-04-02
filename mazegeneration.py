@@ -384,7 +384,6 @@ class MazeGenerator:
                     agents: list[list[int]],
                     tree: set[tuple[int, int]],
                     common: set[frozenset[tuple[int, int]]],
-                    destroy_wall: Callable[..., None],
                     create_wall: Callable[..., None]
                 ) -> None:
         """ all the cheking process for the generation """
@@ -463,7 +462,6 @@ class MazeGenerator:
                         agents,
                         tree,
                         common,
-                        destroy_wall,
                         create_wall
                         )
                 check_process(
@@ -480,7 +478,6 @@ class MazeGenerator:
                         agents,
                         tree,
                         common,
-                        destroy_wall,
                         create_wall
                         )
                 check_process(
@@ -497,7 +494,6 @@ class MazeGenerator:
                         agents,
                         tree,
                         common,
-                        destroy_wall,
                         create_wall
                         )
                 check_process(
@@ -514,7 +510,6 @@ class MazeGenerator:
                         agents,
                         tree,
                         common,
-                        destroy_wall,
                         create_wall
                         )
 

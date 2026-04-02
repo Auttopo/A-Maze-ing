@@ -177,10 +177,11 @@ class MazeInit():
                 if exists(self()["OUTPUT_FILE"]):
                     self()["OUTPUT_FILE"] = self()["OUTPUT_FILE"] + "_1"
                 else:
-                    f_name = self()["OUTPUT_FILE"]
-                    print("this file name already exist. "
-                          f"new file name set to {f_name}",
-                          file=sys.stderr)
+                    if i != 0:
+                        f_name = self()["OUTPUT_FILE"]
+                        print("this file name already exist. "
+                              f"new file name set to {f_name}",
+                              file=sys.stderr)
                     break
                 i += 1
             if i == 101:

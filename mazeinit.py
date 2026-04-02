@@ -197,8 +197,6 @@ class MazeInit():
             raise MazeConfigError("maze air need to be > 1")
 
         # --------------------------------- POS CHECK
-        if self.config["ENTRY"] == self.config["EXIT"]:
-            raise MazeConfigError("ENTRY and EXIT can't be the same")
         if self.config["WIDTH"] < 11 or self.config["HEIGHT"] < 9:
             print("42 not drawed, width < 11 or height < 9", file=sys.stderr)
         illegal_pos: list[tuple[int, int]]
@@ -220,6 +218,8 @@ class MazeInit():
             self().update({"EXIT": (x, y)})
         else:
             self.coordinates_check("EXIT")
+        if self.config["ENTRY"] == self.config["EXIT"]:
+            raise MazeConfigError("ENTRY and EXIT can't be the same")
 
         # -------------------------------- PERFECT CHECK
         self.file_check()

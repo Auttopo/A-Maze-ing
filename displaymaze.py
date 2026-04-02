@@ -108,6 +108,8 @@ class DisplayMaze:
         self.h_wdw = self.h_img + 20 + self.h_menu
         if self.w_wdw < int(self.w * wdw_size):
             self.w_wdw = int(self.w * wdw_size)
+        if self.h_wdw < int(self.h * wdw_size):
+            self.h_wdw = int(self.h * wdw_size)
         self.w_offset = int((self.w_wdw - self.w_img) / 2)
         self.h_offset = int((self.h_wdw - self.h_menu - self.h_img) / 2)
 
@@ -161,7 +163,7 @@ class DisplayMaze:
 
                 if cell & 8 == 8:
                     for i in range(0, self.wall):
-                        for j in range(0, self.cell_size + self.wall):
+                        for j in range(0, self.cell_size + self.wall * 2):
                             offset = (
                                 (x * (self.cell_size + self.wall) + i) *
                                 (self.bit_per_pixel // 8) +
@@ -216,14 +218,14 @@ class DisplayMaze:
                 for k in range(0, 4):
                     self.data[offset + k] = color[k]
 
-    def color_a_case(self,
-                     x: int,
-                     y: int,
-                     color: tuple[int, int, int, int]) -> None:
+    def color_extremities_case(
+                    self,
+                    x: int,
+                    y: int,
+                    color: tuple[int, int, int, int]) -> None:
         """Color the inside of a cell"""
-        cell = self.cells[y][x]
-        for i in range(self.wall + 2, self.cell_size + self.wall - 2):
-            for j in range(self.wall + 2, self.cell_size + self.wall - 2):
+        for i in range(self.wall, self.cell_size + self.wall):
+            for j in range(self.wall, self.cell_size + self.wall):
                 offset = (
                     (x * (self.cell_size + self.wall) + i) *
                     (self.bit_per_pixel // 8) +
@@ -231,7 +233,203 @@ class DisplayMaze:
                 )
                 for k in range(0, 4):
                     self.data[offset + k] = color[k]
-        
+
+    def color_a_case(self,
+                     x: int,
+                     y: int,
+                     direction: str,
+                     color: tuple[int, int, int, int]) -> None:
+        """Color the inside of a cell"""
+        i_start = 0
+        i_end = 0
+        j_start = 0
+        j_end = 0
+
+        if direction == 'N':
+            i_start = self.wall * 2
+            i_end = self.cell_size
+            j_start = self.wall * 2
+            j_end = self.cell_size + self.wall * 3
+
+        elif direction == 'E':
+            i_start = -self.wall
+            i_end = self.cell_size
+            j_start = self.wall * 2
+            j_end = self.cell_size
+
+        elif direction == 'S':
+            i_start = self.wall * 2
+            i_end = self.cell_size
+            j_start = -self.wall
+            j_end = self.cell_size
+
+        elif direction == 'W':
+            i_start = self.wall * 2
+            i_end = self.cell_size + self.wall * 3
+            j_start = self.wall * 2
+            j_end = self.cell_size
+
+        for i in range(i_start, i_end):
+            for j in range(j_start, j_end):
+                offset = (
+                    (x * (self.cell_size + self.wall) + i) *
+                    (self.bit_per_pixel // 8) +
+                    (y * (self.cell_size + self.wall) + j) * self.size_line
+                )
+                for k in range(0, 4):
+                    self.data[offset + k] = color[k]
+        self.display(None)
+
+    def one_direction_path(
+                    self,
+                    x: int,
+                    y: int,
+                    direction: str,
+                    color: tuple[int, int, int, int]) -> None:
+        i_start = 0
+        i_end = 0
+        j_start = 0
+        j_end = 0
+
+        if direction == 'N':
+            i_start = self.wall * 2
+            i_end = self.cell_size
+            j_start = self.cell_size + self.wall
+            j_end = self.cell_size + self.wall * 2
+            y -= 1
+
+        elif direction == 'E':
+            i_start = 0
+            i_end = self.wall
+            j_start = self.wall * 2
+            j_end = self.cell_size
+            x += 1
+
+        elif direction == 'S':
+            i_start = self.wall * 2
+            i_end = self.cell_size
+            j_start = 0
+            j_end = self.wall
+            y += 1
+
+        elif direction == 'W':
+            i_start = self.cell_size + self.wall
+            i_end = self.cell_size + self.wall * 2
+            j_start = self.wall * 2
+            j_end = self.cell_size
+            x -= 1
+
+        for i in range(i_start, i_end):
+            for j in range(j_start, j_end):
+                offset = (
+                    (x * (self.cell_size + self.wall) + i) *
+                    (self.bit_per_pixel // 8) +
+                    (y * (self.cell_size + self.wall) + j) * self.size_line
+                )
+                for k in range(0, 4):
+                    self.data[offset + k] = color[k]
+        self.display(None)
+
+    def color_first_path_case(
+                    self,
+                    x: int,
+                    y: int,
+                    direction: str,
+                    color: tuple[int, int, int, int]) -> tuple[int, int]:
+        i_start = 0
+        i_end = 0
+        j_start = 0
+        j_end = 0
+
+        if direction == 'N':
+            i_start = self.wall * 2
+            i_end = self.cell_size
+            j_start = self.wall * 2
+            j_end = self.cell_size + self.wall * 2
+            y -= 1
+
+        elif direction == 'E':
+            i_start = 0
+            i_end = self.cell_size
+            j_start = self.wall * 2
+            j_end = self.cell_size
+            x += 1
+
+        elif direction == 'S':
+            i_start = self.wall * 2
+            i_end = self.cell_size
+            j_start = 0
+            j_end = self.cell_size
+            y += 1
+
+        elif direction == 'W':
+            i_start = self.wall * 2
+            i_end = self.cell_size + self.wall * 2
+            j_start = self.wall * 2
+            j_end = self.cell_size
+            x -= 1
+
+        for i in range(i_start, i_end):
+            for j in range(j_start, j_end):
+                offset = (
+                    (x * (self.cell_size + self.wall) + i) *
+                    (self.bit_per_pixel // 8) +
+                    (y * (self.cell_size + self.wall) + j) * self.size_line
+                )
+                for k in range(0, 4):
+                    self.data[offset + k] = color[k]
+        self.display(None)
+        return (x, y)
+
+    def color_last_path_case(
+                    self,
+                    x: int,
+                    y: int,
+                    direction: str,
+                    color: tuple[int, int, int, int]) -> None:
+        i_start = 0
+        i_end = 0
+        j_start = 0
+        j_end = 0
+
+        if direction == 'N':
+            i_start = self.wall * 2
+            i_end = self.cell_size
+            j_start = self.cell_size + self.wall
+            j_end = self.cell_size + self.wall * 3
+            y -= 1
+
+        elif direction == 'E':
+            i_start = -self.wall
+            i_end = self.wall
+            j_start = self.wall * 2
+            j_end = self.cell_size
+            x += 1
+
+        elif direction == 'S':
+            i_start = self.wall * 2
+            i_end = self.cell_size
+            j_start = -self.wall
+            j_end = self.wall
+            y += 1
+
+        elif direction == 'W':
+            i_start = self.cell_size + self.wall
+            i_end = self.cell_size + self.wall * 3 + 1
+            j_start = self.wall * 2
+            j_end = self.cell_size
+            x -= 1
+
+        for i in range(i_start, i_end):
+            for j in range(j_start, j_end):
+                offset = (
+                    (x * (self.cell_size + self.wall) + i) *
+                    (self.bit_per_pixel // 8) +
+                    (y * (self.cell_size + self.wall) + j) * self.size_line
+                )
+                for k in range(0, 4):
+                    self.data[offset + k] = color[k]
+        self.display(None)
 
     def draw_forty_two(self, color: tuple[int, int, int, int]) -> None:
         """Draw the forty-two symbol's walls"""
@@ -256,29 +454,37 @@ class DisplayMaze:
         """Draw or undraw the path between the entry to the exit"""
         x = self.entry[0]
         y = self.entry[1]
+
         if self.path_visible:
             color = (0, 0, 0, 255)
             self.path_visible = False
         else:
             self.path_visible = True
 
-        for i in self.path[:-1]:
+        if len(self.path) == 1:
+            self.one_direction_path(x, y, self.path[0], color)
+            return
+
+        x, y = self.color_first_path_case(x, y, self.path[0], color)
+
+        for i in self.path[1:-1]:
             if i == "N":
-                self.color_a_case(x, y - 1, color)
+                self.color_a_case(x, y - 1, 'N', color)
                 y -= 1
             elif i == "E":
-                self.color_a_case(x + 1, y, color)
+                self.color_a_case(x + 1, y, 'E', color)
                 x += 1
             elif i == "S":
-                self.color_a_case(x, y + 1, color)
+                self.color_a_case(x, y + 1, 'S', color)
                 y += 1
             elif i == "W":
-                self.color_a_case(x - 1, y, color)
+                self.color_a_case(x - 1, y, 'W', color)
                 x -= 1
-        self.display(None)
+
+        self.color_last_path_case(x, y, self.path[-1], color)
 
     def clean_image(self) -> None:
-        """Reintialize the image to a black backscreen"""
+        """Reinitialize the image to a black backscreen"""
         color = (0, 0, 0, 255)
         for x in range(self.h_img):
             for y in range(self.w_img):
@@ -286,23 +492,13 @@ class DisplayMaze:
                 for k in range(0, 4):
                     self.data[offset + k] = color[k]
 
-    def guess_the_path(self) -> None:
-        """Try to find the path to the exit"""
-        if self.path_visible:
-            self.draw_the_path(self.path_color)
-        x = self.entry[0]
-        y = self.entry[1]
-        while not (x == self.exit[0] or self.exit[1]):
-            pass
-
     def mymouse(self, button, x, y, mystuff: Any) -> None:
         """Manage operations related to mouse click in the window"""
-        print(f"Got mouse event! button {button} at {x},{y}.")
+        pass
 
     def mykey(self, keynum: int, mystuff: Any) -> None:
         """Manages some operations related to key activation"""
-        # print(f"Got key {keynum}, and got my stuff back:")
-        # print(mystuff)
+
         if keynum == 32:
             self.m.mlx_mouse_hook(self.win_ptr, None, None)
 
@@ -328,11 +524,9 @@ class DisplayMaze:
             else:
                 self.path_visible = True
             self.draw_walls(self.wall_color)
-            self.draw_forty_two(self.wall_color)
+            if not (self.column < 11 or self.rows < 9):
+                self.draw_forty_two(self.wall_color)
             self.display(None)
-
-        elif keynum == 52 or keynum == 65433:
-            self.guess_the_path()
 
     def display(self, _: Any) -> None:
         """Display the image in the window"""
@@ -346,10 +540,14 @@ class DisplayMaze:
         self.regenerate = False
         self.clean_image()
         self.draw_walls(self.wall_color)
-        if not (self.column < 9 or self.rows < 9):
+        if not (self.column < 11 or self.rows < 9):
             self.draw_forty_two(self.wall_color)
-        self.color_a_case(self.entry[0], self.entry[1], self.entry_color)
-        self.color_a_case(self.exit[0], self.exit[1], self.exit_color)
+        self.color_extremities_case(
+            self.entry[0], self.entry[1], self.entry_color
+            )
+        self.color_extremities_case(
+            self.exit[0], self.exit[1], self.exit_color
+            )
         self.draw_the_path(self.path_color)
 
         self.m.mlx_mouse_hook(self.win_ptr, self.mymouse, None)
@@ -368,7 +566,7 @@ class DisplayMaze:
                 self.m.mlx_get_data_addr(self.img)
             )
             init = MazeInit('config.txt')
-            maze = MazeGenerator.UnperfectMaze(init())
+            maze = MazeGenerator(init())
             self.initialize_maze_settings(
                 maze.array, maze.road,
                 init.config['ENTRY'], init.config['EXIT']

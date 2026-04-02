@@ -221,6 +221,12 @@ class MazeInit():
         if self.config["ENTRY"] == self.config["EXIT"]:
             raise MazeConfigError("ENTRY and EXIT can't be the same")
 
+        if self()["EXIT"] in illegal_pos or self()["ENTRY"] in illegal_pos:
+            raise MazeConfigError("ENTRY and EXIT can't be in 42 patern. "
+                                  "With this dimentions illegals positions are:\n"
+                                  f'{illegal_pos}')
+                                    
+
         # -------------------------------- PERFECT CHECK
         self.file_check()
         match self()["PERFECT"]:

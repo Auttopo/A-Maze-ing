@@ -23,10 +23,20 @@ class MazeGenerateError(Exception):
     pass
 
 
+def no_tuning(
+    tree: set[tuple[int, int]],
+    agents: list[list[int]],
+    targets: dict[tuple[int, int], tuple[int, int]],
+    common: set[frozenset[tuple[int, int]]] = set()
+        ) -> bool:
+    return True
+
+
 class MazeGenerator:
     """ main class for generation """
 
-    def __init__(self, config: dict[str, Any]) -> None:
+    def __init__(
+            self, config: dict[str, Any], *, no_gen: bool = False) -> None:
         """ init of generation utilities and generate in same time """
 
         MazeDict: TypeAlias = dict[str, Any]
@@ -70,7 +80,8 @@ class MazeGenerator:
 
         # ------------------------------------------- GENERATE
 
-        self.generate(self.config["SHAPE"])
+        if not no_gen:
+            self.generate(self.config["SHAPE"])
 
     def get_maze(self) -> None:
         return self.array
@@ -346,8 +357,8 @@ class MazeGenerator:
                 array[sender_y][sender_x] -= 0b1000
 
     def setup_agents(
-                self, is_perfect: bool
-            ) -> tuple[list[list[int]], set[tuple[int, int]]]:
+            self, start_agents: list[tuple[int, int]]
+            ) -> list[list[int]]:
         """ setup agents for the exploration """
         """ Usage: here agents just communicate common origin """
 
@@ -356,18 +367,13 @@ class MazeGenerator:
             for _ in range(self.config["HEIGHT"])
         ]
 
-        entry_x: int
-        entry_y: int
-        entry_x, entry_y = self.config["ENTRY"]
-        agents[entry_y][entry_x] = 1
-        start: set[tuple[int, int]] = {self.config["ENTRY"]}
-        if not is_perfect:
-            exit_x: int
-            exit_y: int
-            exit_x, exit_y = self.config["EXIT"]
-            agents[exit_y][exit_x] = 2
-            start.update({self.config["EXIT"]})
-        return (agents, start)
+        x: int
+        y: int
+        for i, elem in enumerate(start_agents, start=1):
+            x, y = elem
+            agents[y][x] = i
+
+        return agents
 
     @staticmethod
     def check_process(
@@ -410,10 +416,19 @@ class MazeGenerator:
                     agents[pos_y][pos_x] = agent_value
                     tree.add((pos_x, pos_y))
 
-    def maze_explore_and_merge(self) -> None:
+    def maze_explore_and_merge(
+        self,
+        start_agents: list[tuple[int, int]],
+        gen_tuning: Callable[
+            [set[tuple[int, int]],
+             list[list[int]],
+             dict[tuple[int, int], tuple[int, int]],
+             set[frozenset[tuple[int, int]]]], bool
+            ] = no_tuning
+                               ) -> None:
         """ main generation function
         explore area, create a passage, and do it again """
-        """ can generate perfect or not maze with the setting"""
+        """ can generate perfect or not maze with the settings """
 
         agents: list[list[int]]
         targets: dict[tuple[int, int], tuple[int, int]]
@@ -429,7 +444,8 @@ class MazeGenerator:
         check_process: Callable[..., None] = self.check_process
 
         targets = {}
-        agents, tree = self.setup_agents(self.config["PERFECT"])
+        agents = self.setup_agents(start_agents)
+        tree = start_agents
         prime_list: list[list[bool]] = self.prime_list
         array: list[list[int]] = self.array
 
@@ -513,7 +529,8 @@ class MazeGenerator:
                         create_wall
                         )
 
-            if len(targets) > 0:
+            if len(targets) > 0 and \
+                    gen_tuning(tree, agents, targets, common):
                 target: tuple[int, int]
                 sender: tuple[int, int]
                 target, sender = random.sample(
@@ -769,4 +786,20 @@ class MazeGenerator:
             case _:
                 raise MazeGenerateError("unknow maze type")
         self.set_42_walls()
-        self.maze_explore_and_merge()
+
+        if self.config["PERFECT"]:
+            possibles: list[tuple[int, int]] = [
+                    (x, y) for y in range(self.config["HEIGHT"])
+                    for x in range(self.config["WIDTH"])
+                    if (x, y) not in self.prime_list]
+            start = {random.choice(possibles)}
+        else:
+            entry_x: int
+            entry_y: int
+            entry_x, entry_y = self.config["ENTRY"]
+            start: set[tuple[int, int]] = {self.config["ENTRY"]}
+            exit_x: int
+            exit_y: int
+            exit_x, exit_y = self.config["EXIT"]
+            start.update({self.config["EXIT"]})
+        self.maze_explore_and_merge(start, no_tuning)

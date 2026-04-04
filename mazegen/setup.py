@@ -5,8 +5,8 @@ from setuptools import setup, find_packages
 setup(
         name="mazegen",
         version="1.0",
-        author="larchimb, abenabde"
-        packages = find_packages()
+        author="larchimb, abenabde",
+        packages = find_packages(),
         description="""
 
         The mazegen package contain the main class MazeGenerator.
@@ -126,6 +126,55 @@ setup(
             OUTPUT_FILE_OVERRIDE=bool
             SHAPE=Classic or Square or Circe or Random
 
+        def tuning_exemple(obj: MazeGenerator) -> Callable[..., bool]:
+            pairs: set[int] = set()
+            save_agents: list[list[int]] = []
+            save_targets: dict[tuple[int, int], tuple[int, int]] = dict()
+            debug = 0
+
+            def keep_data(
+                tree: set[tuple[int, int]],
+                agents: list[list[int]],
+                targets: dict[tuple[int, int], tuple[int, int]],
+                common: set[frozenset[tuple[int, int]]] = set()
+                    ) -> bool:
+                nonlocal save_agents
+                nonlocal save_targets
+                save_targets = targets
+                save_agents = agents
+                return False
+
+            def random_dfs(
+                tree: set[tuple[int, int]],
+                agents: list[list[int]],
+                targets: dict[tuple[int, int], tuple[int, int]],
+                common: set[frozenset[tuple[int, int]]] = set()
+                    ) -> bool:
+
+                target, sender = random.sample(
+                                    list(targets.items()), 1)[0]
+                targets.pop(target)
+                agents[target[1]][target[0]] = \
+                    agents[sender[1]][sender[0]]
+                MazeGenerator.destroy_wall(obj.array, (target, sender))
+
+                obj.maze_explore_and_merge({target}, keep_data)
+                targets.clear()
+                targets.update(save_targets)
+                agents.clear()
+                agents.extend(save_agents.copy())
+
+                possibles: list[tuple[int, int]] = [
+                        (x, y) for y in range(obj.config["HEIGHT"])
+                        for x in range(obj.config["WIDTH"])
+                        if (x, y) not in obj.prime_list and agents[y][x] == 0]
+                if possibles:
+                    start = random.choice(possibles)
+                    agents[start[1]][start[0]] = 1
+                    tree.update({start})
+
+                return False
+            return random_dfs
 
         """,
     )

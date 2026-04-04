@@ -1,8 +1,8 @@
 
 import sys
 import traceback
-from mazeinit import MazeInit, MazeConfigError
-from mazegeneration import MazeGenerator
+from mazegen.mazeinit import MazeInit, MazeConfigError
+from mazegen.mazegeneration import MazeGenerator
 from typing import Any
 from displaymaze import DisplayMaze
 

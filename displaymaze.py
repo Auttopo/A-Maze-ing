@@ -1,8 +1,8 @@
 import random
 from typing import Any
 from mlx import Mlx
-from mazeinit import MazeInit
-from mazegeneration import MazeGenerator
+from mazegen.mazeinit import MazeInit
+from mazegen.mazegeneration import MazeGenerator
 
 
 class DisplayMaze:

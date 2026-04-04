@@ -1,4 +1,5 @@
 FILE=config.txt
+OUTPUT_FILE=maze.txt
 
 install:
 	python3 -m venv maze_env && \
@@ -6,6 +7,9 @@ install:
 	pip install --upgrade pip && \
 	pip install -r requirements.txt && \
 	pip install mlx-2.2-py3-none-any.whl
+
+build:
+	python3 -m build
 
 run:
 	. maze_env/bin/activate && \
@@ -17,6 +21,8 @@ debug:
 
 clean:
 	$(RM) -r __pycache__
+	$(RM) -r .mypy_cache
+	$(RM) $(OUTPUT_FILE)
 
 lint:
 	. maze_env/bin/activate && \

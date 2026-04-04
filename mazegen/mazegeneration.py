@@ -1,7 +1,7 @@
 
 import random
 from typing import Any, Callable, TypedDict, TypeAlias
-from mazeinit import get_42_pos
+from mazegen.mazeinit import get_42_pos
 
 
 class MazeDict(TypedDict):

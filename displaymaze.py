@@ -84,7 +84,7 @@ class DisplayMaze:
         self.wall = 0
         wdw_size = self.wdw_percent
 
-        while self.cell_size < 10 or self.wall < 2:
+        while self.cell_size < 5 or self.wall < 2:
             self.w_wdw = int(self.w * wdw_size)
             self.h_wdw = int(self.h * wdw_size)
 
@@ -113,9 +113,9 @@ class DisplayMaze:
         self.h_img = self.rows * (self.cell_size + self.wall) + self.wall
         self.w_wdw = self.w_img + 20
         self.h_wdw = self.h_img + 20 + self.h_menu
-        if self.w_wdw < int(self.w * wdw_size):
+        if self.w_wdw > int(self.w * wdw_size):
             self.w_wdw = int(self.w * wdw_size)
-        if self.h_wdw < int(self.h * wdw_size):
+        if self.h_wdw > int(self.h * wdw_size):
             self.h_wdw = int(self.h * wdw_size)
         self.w_offset = int((self.w_wdw - self.w_img) / 2)
         self.h_offset = int((self.h_wdw - self.h_menu - self.h_img) / 2)

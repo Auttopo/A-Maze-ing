@@ -21,8 +21,10 @@ debug:
 
 clean:
 	$(RM) -r __pycache__
+	$(RM) -r mazegen/__pycache__
 	$(RM) -r .mypy_cache
 	$(RM) $(OUTPUT_FILE)
+	$(RM) -rf mazegen.egg-info
 
 lint:
 	. maze_env/bin/activate && \

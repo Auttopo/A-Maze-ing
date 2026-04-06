@@ -1,8 +1,8 @@
 import random
 from typing import Any
 from mlx import Mlx
-from mazegen.mazeinit import MazeInit
-from mazegen.mazegeneration import MazeGenerator
+from mazegen import MazeInit
+from mazegen import MazeGenerator
 
 
 class DisplayMaze:
@@ -41,6 +41,13 @@ class DisplayMaze:
         self.entry = entry
         self.exit = exit
         self.path = path
+        if not self.path:
+            raise (Exception(
+                "There is no solution path,"
+                " please use the .resolve()"
+                " on the maze'instance")
+                   )
+
         self.path_visible = False
 
     def intialize_display_settings(self) -> None:
@@ -140,7 +147,7 @@ class DisplayMaze:
                 self.mlx_ptr, self.win_ptr, position, h_menu, color, options[i]
             )
 
-    def gere_close(self, _: Any):
+    def gere_close(self, _: Any) -> None:
         """For closing the window"""
         self.m.mlx_loop_exit(self.mlx_ptr)
 
@@ -492,7 +499,7 @@ class DisplayMaze:
                 for k in range(0, 4):
                     self.data[offset + k] = color[k]
 
-    def mymouse(self, button, x, y, mystuff: Any) -> None:
+    def mymouse(self, button: int, x: int, y: int, mystuff: Any) -> None:
         """Manage operations related to mouse click in the window"""
         pass
 

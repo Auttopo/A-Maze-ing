@@ -1,6 +1,0 @@
-README.md
-pyproject.toml
-mazegen/mazegen.egg-info/PKG-INFO
-mazegen/mazegen.egg-info/SOURCES.txt
-mazegen/mazegen.egg-info/dependency_links.txt
-mazegen/mazegen.egg-info/top_level.txt

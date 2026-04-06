@@ -9,6 +9,7 @@ install:
 	pip install mlx-2.2-py3-none-any.whl
 
 build:
+	. maze_env/bin/activate && \
 	python3 -m build
 
 run:

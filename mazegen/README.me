@@ -1,0 +1,432 @@
+# mazegen
+
+A Python package of the wheel format for generating, solving, and exporting mazes with configurable shapes, sizes, and generation algorithms.
+
+disponible modules importation:
+`from mazegen import MazeGenerator`
+`from mazegen import MazeInit`
+
+---
+
+## Table of Contents
+
+- [MazeGenerator](#mazegenerator)
+  - [Configuration Parameters](#configuration-parameters)
+  - [Initialization](#initialization)
+  - [Methods](#methods)
+  - [Maze Array Format](#maze-array-format)
+  - [Output File Format](#output-file-format)
+- [MazeInit](#mazeinit)
+  - [Settings File Format](#settings-file-format)
+- [Algorithm](#algorithm)
+  - [maze_explore_and_merge](#maze_explore_and_merge)
+  - [Generation Tuning](#generation-tuning)
+- [Tools](#tools)
+
+---
+
+## MazeGenerator
+
+> **Note:** No argument validation is performed by `MazeGenerator` directly. Use the `MazeInit` class for validated input.
+
+### Configuration Parameters
+
+The generator takes a dictionary as its parameter, containing the following keys:
+`def __init__(self, config: dict[str, Any], *, no_gen: bool = False) -> None:`
+
+#### Required — Core (init & generation)
+
+| Key | Type | Description |
+|---|---|---|
+| `WIDTH` | `int` | Width of the maze |
+| `HEIGHT` | `int` | Height of the maze |
+| `PERFECT` | `bool` | Whether to generate a perfect maze |
+| `SHAPE` | `str` | Shape of the maze: `"Classic"`, `"Square"`, or `"Circle"` |
+
+#### Required — Core (resolve & imperfect generation), Optional for file creation
+
+| Key | Type | Description |
+|---|---|---|
+| `ENTRY` | `tuple[int, int]` | Entry point coordinates |
+| `EXIT` | `tuple[int, int]` | Exit point coordinates |
+
+#### Required — Core (file creation)
+
+| Key | Type | Description |
+|---|---|---|
+| `OUTPUT_FILE` | `str` | Path to the output file |
+
+#### Optional — Generation
+
+| Key | Type | Description |
+|---|---|---|
+| `SEED` | `int \| str` | Random seed; use an integer or `"Random"` |
+
+---
+
+### Initialization
+
+When a `MazeGenerator` object is instantiated, a maze is generated immediately according to the chosen options.
+
+```python
+maze = MazeGenerator(dict[str, Any])
+```
+
+---
+
+### Methods
+
+#### `get_maze()`
+
+Returns the maze as a 2D array.
+
+```python
+array = maze.get_maze()
+```
+
+#### `resolve()`
+
+Resolves the maze and returns the directions to take from the entry to reach the exit, as a single string using the first letter of each cardinal direction.
+
+```python
+path = maze.resolve()
+# Example output: "NSSENWWNE"
+```
+
+#### `update_config(new_data: dict[str, Any])`
+
+Updates configuration settings between calls.
+
+```python
+maze.update_config(new_data)
+```
+
+#### `create_file()`
+
+Creates an output file representing the maze. If the maze has been resolved, the solution path is included.
+
+```python
+maze.create_file()
+```
+
+---
+
+### Maze Array Format
+
+The array returned by `get_maze()` is of type `list[list[int]]`. Cells are accessed with `array[y][x]`.
+
+Each cell is an integer where each bit represents the presence of a wall on one side:
+
+| Bit | Direction | Value |
+|---|---|---|
+| 0 | North | LSB |
+| 1 | East | |
+| 2 | South | |
+| 3 | West | MSB |
+
+- `1` = wall present
+- `0` = no wall
+
+---
+
+### Output File Format
+
+The output file contains:
+
+1. A hexadecimal representation of the maze
+2. Entry position *(optional)*
+3. Exit position *(optional)*
+4. Path to exit *(optional)*
+
+#### Example Output File
+
+```
+BD51555179557D55553B
+A938393810393911392A
+C0686C446C446C6C406A
+B8383939391111393812
+C0686C2C446C2C6C442E
+9010390139112939392B
+A86C686C6C6C2C44006A
+A8393839391101392812
+EC046C2C446C2C686C6E
+B92939053D3D4538113B
+C404686FAFAFFFC42C46
+B929103FEF857FB90113
+AC2C6C2FFFAFFFC06C6E
+A90139293FAFD5383913
+AC2C44446FAFFFC4286E
+8129111139013911283B
+AC6C68686C2C6C2C4442
+A939383839291129393A
+80446C6C04406C68446E
+A8393939291011383913
+EC4440406C6C2C6C046E
+9111383839390111013B
+E86C446844686C6C2C6A
+B839393839383939293A
+C46C4444446C446C4446
+
+8,18
+18,17
+EEESESSEEEENNWNEEEN%
+```
+
+---
+
+## MazeInit
+
+A helper class that validates the content of a settings file and parses it into a dictionary ready for use with `MazeGenerator`.
+
+```python
+data_dict = MazeInit("setting_file_name")
+```
+
+To access the dictionary, call the object:
+
+```python
+config = data_dict()
+```
+
+---
+
+### Settings File Format
+
+#### Mandatory Fields
+
+```
+WIDTH=int
+HEIGHT=int
+ENTRY=int,int or Random
+EXIT=int,int or Random
+OUTPUT_FILE=maze.txt
+PERFECT=bool or Random
+SEED=int or Random
+```
+
+#### Optional Fields
+
+```
+OUTPUT_FILE_OVERRIDE=bool
+SHAPE=Classic or Square or Circle or Random
+```
+
+---
+
+## Algorithm
+
+### maze_explore_and_merge
+
+```python
+def maze_explore_and_merge(
+    self,
+    start_agents: set[tuple[int, int]],
+    gen_tuning: Callable[
+        [list[list[int]],
+         set[tuple[int, int]],
+         list[list[int]],
+         dict[tuple[int, int], tuple[int, int]],
+         set[frozenset[tuple[int, int]]]], bool
+        ] = lambda *args: True
+```
+
+This function is the core of the algorythme. Inside it the DFS method is used by default.
+Takes a set of starting points as `(x, y)` tuples, and an optional tuning function described [below](#generation-tuning).
+
+**How it works:**
+
+Starting points are each assigned a unique identity (agent ID). The algorithm then expands each agent's identity by exploring the surrounding area. Once all agents have finished exploring their areas, a random wall is selected from the `targets` dictionary — which tracks all unvisited neighboring cells across all areas — and destroyed. The newly accessible cell becomes the start of a new exploration.
+
+The `targets` dictionary is never reset; visited positions are removed from it. This feeds the generation until the maze is complete.
+
+**Perfect mode:** A single start point is used. Agents of different identities never meet.
+
+**Imperfect mode:** Two start points are used. All shared walls between different agents are kept in the `common` set. If no wall exists between two different agents, one is created and added to `common`. Once all cells are explored, two random walls from `common` are destroyed to ensure at least two possible paths between the entry and exit, regardless of the initial setup.
+
+#### Example — Agent Representation During Generation
+
+```
+[4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+[4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+[4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+[4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+[4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 1, 1, 1, 1, 1, 1, 1, 1]
+[4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 1, 1, 1, 1, 1, 1, 1]
+[4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 1, 1, 1, 1, 1, 1]
+[4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 1, 1, 1, 1, 1, 1, 1]
+[4, 4, 4, 4, 4, 4, 4, 0, 4, 0, 4, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1]
+[4, 4, 4, 4, 4, 4, 4, 0, 4, 0, 4, 4, 4, 0, 1, 1, 1, 1, 1, 1, 1]
+[4, 4, 4, 4, 4, 4, 4, 0, 0, 0, 4, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1]
+[4, 4, 4, 4, 4, 4, 4, 4, 4, 0, 4, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+[4, 4, 4, 4, 4, 4, 4, 4, 4, 0, 4, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1]
+[4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 1, 1, 1, 1, 1, 1, 1, 1]
+[4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+[4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 1, 1, 1, 1, 1, 1, 1, 1, 1, 3]
+[2, 4, 4, 4, 4, 1, 1, 4, 4, 4, 4, 1, 1, 1, 1, 1, 1, 1, 1, 3, 3]
+[2, 2, 4, 4, 1, 1, 1, 1, 4, 4, 4, 1, 1, 1, 1, 1, 1, 1, 1, 3, 3]
+[2, 2, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 3, 3, 3]
+[2, 2, 2, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 3, 3, 3, 3]
+[2, 2, 2, 2, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 3, 3, 3, 3, 3]
+```
+
+---
+
+### Generation Tuning
+
+Generation tuning allows you to customize the maze generation algorithm.
+
+**Step 1:** Disable default generation by passing `no_gen=True` during initialization. This prevents the default generation from running.
+Set multiples filled cells/areas can be randomly merged
+Get inspired by the defaults possible patterns :
+```python
+        if self.config["WIDTH"] == 1 or self.config["HEIGHT"] == 1:
+            self.config["PERFECT"] = True
+            indicator = "Line"
+
+        match indicator:
+            case "Circle":
+                self.generate_circles()
+                self.draw_cross()
+            case "Classic":
+                self.generate_cells()
+            case "Square":
+                self.generate_squares()
+            case "Line":
+                return
+            case _:
+                raise self.MazeGenerateError("unknow maze type")
+        self.set_42_walls()
+```
+
+The algorithm's wall-destruction block begins with:
+
+```python
+if gen_tuning(array, tree, agents, targets, common) and len(targets) > 0:
+```
+
+`len(targets) > 0` marks the end of the algorithm. and the default tuning function does nothing and returns `True`.
+
+#### Tuning Function Signature
+
+```python
+def exemple_tuning(
+    array: list[list[int]],
+    tree: set[tuple[int, int]],
+    agents: list[list[int]],
+    targets: dict[tuple[int, int], tuple[int, int]],
+    common: set[frozenset[tuple[int, int]]] = set()
+        ) -> bool:
+    """ Default function arg for maze_explore_and_merge """
+    return True
+```
+
+array: is the 2D maze representation of binary, access with : y then x.
+tree: is the exploration tree DFS nods set.
+agents: is the 2D list of identity of cells (correspondig the array list)
+targets: is the dict of neihboring cells not accessible and never visted; target (keys) : sender (value) , containing their tuple x and y
+common: is the set of cells where two differents agent have meet ; agent1, agent2; containing their set x and y
+
+array: is the 2D maze representation in binary, accessed with y then x.
+tree: is the DFS exploration tree (set of nodes).
+agents: is the 2D list of cell identifiers (corresponding to the array list).
+targets: is a dictionary of neighboring cells that are not accessible and never visited; target (keys): sender (value), containing their (x, y) tuple.
+common: is the set of cells where two different agents have met; agent1, agent2, containing their (x, y) sets.
+
+- A wall is necessarily present between a 'target' and his key, and elements of a set of 'common'.
+
+#### Possible Customizations
+
+- **Destroy walls of multiple targets** — useful for creating chaotic mazes with multiple passages (e.g., a Pac-Man style map). Use `MazeGenerator.destroy_wall(obj.array, (target, sender))`.
+- **Create passages between specific agents** — destroy walls from the set `common` to build a precise maze layout.
+
+#### Return Value
+
+- Return `True` to allow the classic next step (destroy one wall from `targets` if available).
+- Return `False` to completely override the default behavior.
+
+#### Important Notes
+
+- After destroying a wall from `targets`, you must set the agent ID for the new cell.
+- In `PERFECT=False` mode, 2 random walls from `common` are destroyed automatically. Use `PERFECT=True` to maintain full control over your custom behavior.
+
+##### When Returning `False`
+- You must manually set the new exploration start with: `tree = {(x, y)}`
+- `tree` elements are selected randomly if multiple are set — use a single element for precise control.
+
+
+#### Function Source Code — Default Behavior
+
+```python
+if gen_tuning(array, tree, agents, targets, common) \
+        and len(targets) > 0:
+    target: tuple[int, int]
+    sender: tuple[int, int]
+    target, sender = random.choice(list(targets.items()))
+    targets.pop(target)
+    tree = {target}
+    agents[target[1]][target[0]] = \
+        agents[sender[1]][sender[0]]
+    destroy_wall(array, (target, sender))
+```
+
+#### Recommended Pattern
+
+Refer to the built-in `generate()` method as a starting point for your custom generation logic:
+
+```python
+def generate(self, indicator: str) -> None:
+    """ Generate the maze depending on the key string used """
+
+    if self.config["WIDTH"] == 1 or self.config["HEIGHT"] == 1:
+        self.config["PERFECT"] = True
+        indicator = "Line"
+
+    match indicator:
+        case "Circle":
+            self.generate_circles()
+            self.draw_cross()
+        case "Classic":
+            self.generate_cells()
+        case "Square":
+            self.generate_squares()
+        case "Line":
+            return
+        case _:
+            raise self.MazeGenerateError("Unknown maze type")
+    self.set_42_walls()
+
+    start: set[tuple[int, int]]
+    if self.config["PERFECT"]:
+        possibles: list[tuple[int, int]] = [
+                (x, y) for y in range(self.config["HEIGHT"])
+                for x in range(self.config["WIDTH"])
+                if self.prime_list[y][x]]
+        start = {random.choice(possibles)}
+    else:
+        entry_x, entry_y = self.config["ENTRY"]
+        start = {self.config["ENTRY"]}
+        exit_x, exit_y = self.config["EXIT"]
+        start.update({self.config["EXIT"]})
+    self.maze_explore_and_merge(start)
+```
+
+---
+
+#### Tools
+
+The following static methods check for wall presence in a given direction from a position. They return `1` if a wall is present and `0` if not.
+
+```python
+@staticmethod
+def fast_get_north(array: list[list[int]], shift_x: int = 0, shift_y: int = 0)
+
+@staticmethod
+def fast_get_east(array: list[list[int]], shift_x: int = 0, shift_y: int = 0)
+
+@staticmethod
+def fast_get_south(array: list[list[int]], shift_x: int = 0, shift_y: int = 0)
+
+@staticmethod
+def fast_get_west(array: list[list[int]], shift_x: int = 0, shift_y: int = 0)
+```
+

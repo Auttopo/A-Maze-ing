@@ -195,6 +195,8 @@ class MazeInit():
         self()["HEIGHT"] = self.value_check(self()["HEIGHT"], "HEIGHT")
         if self()["WIDTH"] * self()["HEIGHT"] < 2:
             raise MazeConfigError("maze air need to be > 1")
+        if self()["WIDTH"] * self()["HEIGHT"] > 500 * 500:
+            raise MazeConfigError("the mazimal air of the maze is : 250000")
 
         # --------------------------------- POS CHECK
         if self.config["WIDTH"] < 11 or self.config["HEIGHT"] < 9:

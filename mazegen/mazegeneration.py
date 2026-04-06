@@ -28,9 +28,9 @@ class MazeGenerator:
             self, config: dict[str, Any], *, no_gen: bool = False) -> None:
         """ init of generation utilities and generate in same time """
 
-        self.MazeDict: TypeAlias = dict[str, Any]
+        MazeDict: TypeAlias = dict[str, Any]
 
-        self.config: self.MazeDict = config
+        self.config: MazeDict = config
         self.array: list[list[int]] = []
         self.pos_x: int = 0
         self.pos_y: int = 0
@@ -72,7 +72,7 @@ class MazeGenerator:
         if not no_gen:
             self.generate(self.config["SHAPE"])
 
-    def get_maze(self) -> None:
+    def get_maze(self) -> list[list[int]]:
         return self.array
 
     def update_config(self, new_data: dict[str, Any]) -> None:
@@ -346,7 +346,7 @@ class MazeGenerator:
                 array[sender_y][sender_x] -= 0b1000
 
     def setup_agents(
-            self, start_agents: list[tuple[int, int]]
+            self, start_agents: set[tuple[int, int]]
             ) -> list[list[int]]:
         """ setup agents for the exploration """
         """ Usage: here agents just communicate common origin """
@@ -407,7 +407,7 @@ class MazeGenerator:
 
     def maze_explore_and_merge(
         self,
-        start_agents: list[tuple[int, int]],
+        start_agents: set[tuple[int, int]],
         gen_tuning: Callable[
             [list[list[int]],
              set[tuple[int, int]],
@@ -777,17 +777,18 @@ class MazeGenerator:
                 raise self.MazeGenerateError("unknow maze type")
         self.set_42_walls()
 
+        start: set[tuple[int, int]]
         if self.config["PERFECT"]:
             possibles: list[tuple[int, int]] = [
                     (x, y) for y in range(self.config["HEIGHT"])
                     for x in range(self.config["WIDTH"])
-                    if (x, y) not in self.prime_list]
+                    if self.prime_list[y][x]]
             start = {random.choice(possibles)}
         else:
             entry_x: int
             entry_y: int
             entry_x, entry_y = self.config["ENTRY"]
-            start: set[tuple[int, int]] = {self.config["ENTRY"]}
+            start = {self.config["ENTRY"]}
             exit_x: int
             exit_y: int
             exit_x, exit_y = self.config["EXIT"]

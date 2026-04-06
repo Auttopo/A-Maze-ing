@@ -1,73 +1,31 @@
-# A-Maze-ing
+# mazegen
+
+A Python package of the wheel format for generating, solving, and exporting mazes with configurable shapes, sizes, and generation algorithms.
+
+disponible modules importation:
+`from mazegen import MazeGenerator`
+`from mazegen import MazeInit`
+
+---
 
 ## Table of Contents
 
-- [Description](#description)
-- [Instructions](#instructions)
-- [Configuration](#configuration)
-    - [Initialization](#initialization)
-        - [Configuration Parameters for MazeGenerator](#configuration-parameters-for-mazegenerator)
-        - [MazeInit](#mazeinit)
-    - [Maze Array Format](#maze-array-format)
-    - [Output File Format](#output-file-format)
-    - [Settings File Format](#settings-file-format)
+- [MazeGenerator](#mazegenerator)
+  - [Initialization](#initialization)
+    - [Configuration Parameters for MazeGenerator](#configuration-parameters)
+    - [MazeInit](#configuration-parameters)
+  - [Maze Array Format](#maze-array-format)
+  - [Output File Format](#output-file-format)
+  - [Settings File Format](#settings-file-format)
 - [Algorithm](#algorithm)
-- [Reusable Components](#reusable-components)
-- [Team](#team)
-- [Resources](#resources)
 
 ---
 
-## Description
+## MazeGenerator
 
-This project, created as part of the 42 curriculum by **abenabde** and **larchimb**, generates different types of mazes, either perfect or imperfect. Once generated, the maze is solved using a "Distract"-type algorithm and displayed using the **MLX** library.
-
-The program:
-- Parses settings from a `config.txt` file.
-- Generates the maze in three possible shapes: single-cell, square, or circular.
-- Outputs the maze, entry point, exit point, and shortest path to `maze.txt`.
-- Visualizes the maze and solution using the MLX library.
-
-The project is designed to be packaged as a `.whl` file for later use.
-
----
-
-## Instructions
-
-### Available Commands
-
-| Command            | Description                                  |
-|--------------------|----------------------------------------------|
-| `make install`     | Install dependencies from `requirements.txt` |
-| `make build`       | Build the `mazegen` pip package              |
-| `make run`         | Generate and display the maze                |
-| `make debug`       | Run with Python debugger (pdb)               |
-| `make lint`        | Run `flake8` and `mypy`                      |
-| `make lint-strict` | Run `flake8` and `mypy` in strict mode       |
-| `make clean`       | Remove temporary files and caches            |
-
-Recommended workflow:
-
-```bash
-make install
-make run
-````
-
-To build the wheel (after installation):
-
-```bash
-make build
-```
-
----
-
-## Configuration
-
-The configuration file uses a simple `KEY=VALUE` format. Lines starting with `#` are comments. The default configuration file is `config.txt`.
+### Initialization
 
 > **Note:** No argument validation is performed by `MazeGenerator` directly. Use the `MazeInit` class for validated input.
-
-## Initialization
 
 ### Configuration Parameters for MazeGenerator
 
@@ -146,6 +104,7 @@ if __name__ == "__main__":
     main()
 ```
 
+---
 
 ### Maze Array Format
 
@@ -212,19 +171,9 @@ EEESESSEEEENNWNEEEN%
 
 ## Algorithm
 
-### Maze Generation — Iterative Backtracker (DFS)
 
-The maze is generated using an iterative depth-first search (DFS) with backtracking using an explicit stack.
-
-Takes a set of starting points as `(x, y)` tuples, and an optional tuning function described.
-
-DFS (Depth-First Search) is commonly used for maze generation because it is:
-
-✔️ Simple to implement
-✔️ Efficient (linear time complexity)
-✔️ Produces perfect mazes (no loops, single path between any two points)
-✔️ Generates natural-looking structures with long corridors
-✔️ Easy to randomize for different results each run
+This function is the core of the algorythme. Inside it the DFS method is used by default.
+Takes a set of starting points as `(x, y)` tuples, and an optional tuning function described [below](#generation-tuning).
 
 **How it works:**
 
@@ -267,75 +216,3 @@ The `targets` dictionary is never reset; visited positions are removed from it. 
 ```
 
 ---
-
-### Maze Solving — BFS (Breadth-First Search)
-
-The shortest path is computed using breadth-first search (BFS).
-The algorithm explores the maze layer by layer from the entry point, ensuring the first path found is optimal.
-Each visited cell stores its predecessor, allowing the path to be reconstructed once the exit is reached.
-
----
-
-## Reusable Components
-
-All reusable elements are located in the `mazegen` folder, including the parsing and maze generation modules.
-
-
-### Building from Source
-
-Run the following command to create the wheel:
-
-```bash
-make build
-```
-
-### Installation
-
-To reuse the files, install the wheel with:
-
-```bash
-pip install mazegen-1.0.0-py3-none-any.whl
-```
-
-
----
-
-## Team
-
-### Roles
-
-| Member       | Responsibilities              |
-| ------------ | ----------------------------- |
-| **abenabde** | MazeInit, MazeGenerator       |
-| **larchimb** | DisplayMaze, Wheel generation |
-
-### Planning
-
-Initially, Amin worked on imperfect mazes and Luc on perfect mazes. Amin later rewrote the perfect maze algorithm, while Luc handled the MLX visualization. Work was split for the Makefile: Amin handled generation, Luc built the wheel.
-
-### What Could Be Improved
-
-* **Structural issue:** Two maze generators were implemented, but only one is used.
-* **Repo management:** Development started on a single branch before moving to multiple branches.
-
-### Successes
-
-* **Collaborative work:** Programs were integrated without conflicts.
-* **Communication:** Continuous collaboration throughout the project.
-
-### Tools Used
-
-| Tool          | Usage                  |
-| ------------- | ---------------------- |
-| **flake8**    | Code style enforcement |
-| **mypy**      | Static type checking   |
-| **pip/build** | Python packaging       |
-
----
-
-## Ressources
-
-* [Maze Algorithms](https://info.blaisepascal.fr/nsi-labyrinthes/)
-* [Maze Modeling](https://fr.wikipedia.org/wiki/Mod%C3%A9lisation_math%C3%A9matique_d%27un_labyrinthe)
-* Claude and ChatGPT: for clarifying certain concepts
-

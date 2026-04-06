@@ -50,7 +50,7 @@ class DisplayMaze:
 
         self.path_visible = False
 
-    def intialize_display_settings(self) -> None:
+    def initialize_display_settings(self) -> None:
         """Initialize mlx and window's settings"""
         self.m = Mlx()
         self.mlx_ptr = self.m.mlx_init()

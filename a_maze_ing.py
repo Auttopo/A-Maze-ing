@@ -17,7 +17,7 @@ def main() -> None:
         maze.resolve()
         screen = DisplayMaze(
                 maze.array, maze.road, init['ENTRY'], init['EXIT'])
-        screen.intialize_display_settings()
+        screen.initialize_display_settings()
         maze.create_file()
     except Exception as e:
         print("An error occured :", e, file=sys.stderr)

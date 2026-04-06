@@ -4,44 +4,33 @@ from typing import Any, Callable, TypedDict, TypeAlias
 from mazeinit import get_42_pos
 
 
-class MazeDict(TypedDict):
-    """ typing helper, contain all keys for generation """
-
-    WIDTH: int
-    HEIGHT: int
-    ENTRY: tuple[int, int]
-    EXIT: tuple[int, int]
-    OUTPUT_FILE: str
-    PERFECT: bool
-    SEED: int | str
-    SHAPE: str
-    OUTPUT_FILE_OVERRIDE: bool
-
-
-class MazeGenerateError(Exception):
-    """ precise exception for generation debug """
-    pass
-
-
-def no_tuning(
-    tree: set[tuple[int, int]],
-    agents: list[list[int]],
-    targets: dict[tuple[int, int], tuple[int, int]],
-    common: set[frozenset[tuple[int, int]]] = set()
-        ) -> bool:
-    return True
-
-
 class MazeGenerator:
     """ main class for generation """
+
+    class MazeGenerateError(Exception):
+        """ precise exception for generation debug """
+        pass
+
+    class MazeDict(TypedDict):
+        """ typing helper, contain all keys for generation """
+
+        WIDTH: int
+        HEIGHT: int
+        ENTRY: tuple[int, int]
+        EXIT: tuple[int, int]
+        OUTPUT_FILE: str
+        PERFECT: bool
+        SEED: int | str
+        SHAPE: str
+        OUTPUT_FILE_OVERRIDE: bool
 
     def __init__(
             self, config: dict[str, Any], *, no_gen: bool = False) -> None:
         """ init of generation utilities and generate in same time """
 
-        MazeDict: TypeAlias = dict[str, Any]
+        self.MazeDict: TypeAlias = dict[str, Any]
 
-        self.config: MazeDict = config
+        self.config: self.MazeDict = config
         self.array: list[list[int]] = []
         self.pos_x: int = 0
         self.pos_y: int = 0
@@ -273,7 +262,7 @@ class MazeGenerator:
                 case "E":
                     pos_x -= 1
                 case _:
-                    raise MazeGenerateError(
+                    raise self.MazeGenerateError(
                         f"Impossible road occured: {''.join(road)}"
                     )
 
@@ -420,11 +409,13 @@ class MazeGenerator:
         self,
         start_agents: list[tuple[int, int]],
         gen_tuning: Callable[
-            [set[tuple[int, int]],
+            [list[list[int]],
+             set[tuple[int, int]],
              list[list[int]],
              dict[tuple[int, int], tuple[int, int]],
              set[frozenset[tuple[int, int]]]], bool
-            ] = no_tuning
+            ] = lambda *args: True
+
                                ) -> None:
         """ main generation function
         explore area, create a passage, and do it again """
@@ -529,12 +520,11 @@ class MazeGenerator:
                         create_wall
                         )
 
-            if len(targets) > 0 and \
-                    gen_tuning(tree, agents, targets, common):
+            if gen_tuning(array, tree, agents, targets, common) \
+                    and len(targets) > 0:
                 target: tuple[int, int]
                 sender: tuple[int, int]
-                target, sender = random.sample(
-                                    list(targets.items()), 1)[0]
+                target, sender = random.choice(list(targets.items()))
                 targets.pop(target)
                 tree = {target}
                 agents[target[1]][target[0]] = \
@@ -784,7 +774,7 @@ class MazeGenerator:
             case "Line":
                 return
             case _:
-                raise MazeGenerateError("unknow maze type")
+                raise self.MazeGenerateError("unknow maze type")
         self.set_42_walls()
 
         if self.config["PERFECT"]:
@@ -802,4 +792,4 @@ class MazeGenerator:
             exit_y: int
             exit_x, exit_y = self.config["EXIT"]
             start.update({self.config["EXIT"]})
-        self.maze_explore_and_merge(start, no_tuning)
+        self.maze_explore_and_merge(start)

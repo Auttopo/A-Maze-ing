@@ -68,12 +68,12 @@ class MazeGenerator:
             self.array[config["HEIGHT"] - 1][i] += 0b0100
 
         # ------------------------------------------- GENERATE
-        
-        print("seed used :", seed)
-        print("shape used :", config["SHAPE"])
-        print("is perfect :", config["PERFECT"])
-        print("entry :", config["ENTRY"])
-        print("exit :", config["EXIT"])
+
+        print("Seed used :", seed)
+        print("Shape used :", config["SHAPE"])
+        print("Is perfect :", config["PERFECT"])
+        print("Entry :", config["ENTRY"])
+        print("Exit :", config["EXIT"])
 
 
         if not no_gen:

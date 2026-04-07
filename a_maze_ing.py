@@ -8,6 +8,7 @@ from displaymaze import DisplayMaze
 
 
 def main() -> None:
+    """ main program execution """
 
     try:
         if len(sys.argv) < 2:

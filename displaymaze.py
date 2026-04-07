@@ -1,5 +1,5 @@
 import random
-from typing import Any
+from typing import Any, Callable
 from mlx import Mlx
 from mazegen import MazeInit
 from mazegen import MazeGenerator
@@ -17,15 +17,15 @@ class DisplayMaze:
     ) -> None:
         """Initiliaze the maze's values, and defaults colors"""
         self.initialize_maze_settings(cells, path, entry, exit)
-        self.wall_color = (255, 255, 255, 220)
-        self.path_color = (100, 150, 110, 255)
-        self.entry_color = (0, 215, 0, 200)
-        self.exit_color = (0, 0, 215, 200)
+        self.wall_color: tuple[int, int, int, int] = (255, 255, 255, 220)
+        self.path_color: tuple[int, int, int, int] = (100, 150, 110, 255)
+        self.entry_color: tuple[int, int, int, int] = (0, 215, 0, 200)
+        self.exit_color: tuple[int, int, int, int] = (0, 0, 215, 200)
 
-        self.wall_size = 0.2
-        self.wdw_percent = 0.4
-        self.h_menu = 25
-        self.printable = True
+        self.wall_size: float = 0.2
+        self.wdw_percent: float = 0.4
+        self.h_menu: int = 25
+        self.printable: bool = True
 
     def initialize_maze_settings(
         self,
@@ -35,12 +35,12 @@ class DisplayMaze:
         exit: tuple[int, int],
     ) -> None:
         """Initialize maze's settings"""
-        self.cells = cells
-        self.rows = len(cells)
-        self.column = len(cells[0])
-        self.entry = entry
-        self.exit = exit
-        self.path = path
+        self.cells: list[list[int]] = cells
+        self.rows: int = len(cells)
+        self.column: int = len(cells[0])
+        self.entry: tuple[int, int] = entry
+        self.exit: tuple[int, int] = exit
+        self.path: str = path
         if not self.path:
             raise (Exception(
                 "There is no solution path,"
@@ -48,12 +48,12 @@ class DisplayMaze:
                 " on the maze'instance")
                    )
 
-        self.path_visible = False
+        self.path_visible: bool = False
 
     def initialize_display_settings(self) -> None:
         """Initialize mlx and window's settings"""
         self.m = Mlx()
-        self.mlx_ptr = self.m.mlx_init()
+        self.mlx_ptr: Any = self.m.mlx_init()
         self.calculate_img_values()
 
         try:
@@ -61,14 +61,18 @@ class DisplayMaze:
                 raise Exception(
                     "The maze can't be displayed, not readable or too big"
                     )
-            self.win_ptr = self.m.mlx_new_window(
+            self.win_ptr: Any = self.m.mlx_new_window(
                 self.mlx_ptr, self.w_wdw, self.h_wdw, "A_Maze_zing"
             )
-            self.img = self.m.mlx_new_image(
+            self.img: Any = self.m.mlx_new_image(
                 self.mlx_ptr,
                 self.w_img,
                 self.h_img
                 )
+            self.data: Any
+            self.bit_per_pixel: Any
+            self.size_line: Any
+            the_format: Any
             self.data, self.bit_per_pixel, self.size_line, the_format = (
                 self.m.mlx_get_data_addr(self.img)
             )
@@ -79,20 +83,23 @@ class DisplayMaze:
 
     def calculate_img_values(self) -> None:
         """Calculate the value of a cell and of a wall in pixel"""
+        ret: Any
+        self.w: int
+        self.h: int
         ret, self.w, self.h = self.m.mlx_get_screen_size(self.mlx_ptr)
-        self.cell_size = 0
-        self.wall = 0
-        wdw_size = self.wdw_percent
+        self.cell_size: int = 0
+        self.wall: int = 0
+        wdw_size: float = self.wdw_percent
 
         while self.cell_size < 5 or self.wall < 2:
-            self.w_wdw = int(self.w * wdw_size)
-            self.h_wdw = int(self.h * wdw_size)
+            self.w_wdw: int = int(self.w * wdw_size)
+            self.h_wdw: int = int(self.h * wdw_size)
 
-            w_cell = int(
+            w_cell: int = int(
                 self.w_wdw /
                 (self.column + ((self.column + 1) * self.wall_size))
             )
-            h_cell = int(
+            h_cell: int = int(
                 (self.h_wdw - self.h_menu) /
                 (self.rows + ((self.rows + 1) * self.wall_size))
             )
@@ -107,7 +114,6 @@ class DisplayMaze:
 
         if (wdw_size > 1):
             self.printable = False
-            pass
 
         self.w_img = self.column * (self.cell_size + self.wall) + self.wall
         self.h_img = self.rows * (self.cell_size + self.wall) + self.wall
@@ -293,6 +299,7 @@ class DisplayMaze:
                     y: int,
                     direction: str,
                     color: tuple[int, int, int, int]) -> None:
+        """ draw the path on a normal situation """
         i_start = 0
         i_end = 0
         j_start = 0
@@ -343,6 +350,7 @@ class DisplayMaze:
                     y: int,
                     direction: str,
                     color: tuple[int, int, int, int]) -> tuple[int, int]:
+        """ draw the path on the fist case """
         i_start = 0
         i_end = 0
         j_start = 0
@@ -394,6 +402,7 @@ class DisplayMaze:
                     y: int,
                     direction: str,
                     color: tuple[int, int, int, int]) -> None:
+        """ draw the path on the last case """
         i_start = 0
         i_end = 0
         j_start = 0

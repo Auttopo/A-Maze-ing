@@ -6,13 +6,15 @@ import random
 
 
 def get_42_pos(width: int, height: int) -> list[tuple[int, int]]:
-    # set: up left point
+    """ calculate 42 logo patern and return it """
     if width < 11 or height < 9:
         return [(-1, -1)]
 
     pos_list: list[tuple[int, int]] = []
+    # set: up left point
     pos_x: int = int(width / 2) - 3
     pos_y: int = int(height / 2) - 2
+    i: int
     for i in range(2):
         pos_list.append((pos_x, pos_y))
         pos_y += 1
@@ -51,15 +53,20 @@ def get_42_pos(width: int, height: int) -> list[tuple[int, int]]:
 
 
 class MazeConfigError(Exception):
+    """ basic error class """
     pass
 
 
 class MazeInit():
+    """ class to verify data for futu generation """
 
     def __call__(self) -> dict[str, Any]:
+        """ easier access to the dict of valided data """
         return self.config
 
     def __init__(self, file_name: str) -> None:
+        """ init and verify data of the file used """
+
         self.config: dict[str, Any] = {}
         try:
             open(file_name, "r")
@@ -71,6 +78,8 @@ class MazeInit():
         with open(file_name, "r") as file:
             full_data: str = file.read()
             lines: list[str] = full_data.split("\n")
+            i: int
+            line: str
             for i, line in enumerate(lines, 1):
                 self.line_parser(line, i)
 
@@ -78,6 +87,7 @@ class MazeInit():
         self.data_validation()
 
     def line_parser(self, line: str, i: int) -> None:
+        """ parse a line """
         if line == "" or line[0] == "#":
             return
         try:
@@ -94,12 +104,14 @@ class MazeInit():
                                   "\nformat: SETTING_NAME=VALUE")
 
     def keys_validation(self) -> None:
+        """ verify all keys mandatory are here """
         trace: str = ""
         valid_data: set[str] = {
             "WIDTH", "HEIGHT", "ENTRY",
             "EXIT", "OUTPUT_FILE", "OUTPUT_FILE_OVERRIDE",
             "PERFECT", "SEED", "SHAPE"
             }
+        elem: str
         for elem in self.config:
             if elem not in valid_data:
                 trace += "unknow key in the config file : "\
@@ -124,6 +136,7 @@ class MazeInit():
 
     @staticmethod
     def value_check(data: str, name: str) -> int:
+        """ check if a value is valid """
         try:
             idata: int = int(data)
             if idata < 0:
@@ -134,7 +147,7 @@ class MazeInit():
         return idata
 
     def coordinates_check(self, data_str: str) -> None:
-
+        """ check coordinates values is valid """
         ex: str = ""
         ey: str = ""
 
@@ -157,6 +170,8 @@ class MazeInit():
         self().update({data_str: (x, y)})
 
     def file_check(self) -> None:
+        """ check file parameters """
+
         if self().get("OUTPUT_FILE_OVERRIDE"):
             match self()["OUTPUT_FILE_OVERRIDE"]:
                 case "True":
@@ -172,7 +187,7 @@ class MazeInit():
             raise MazeConfigError("please set a output name file")
 
         if not self()["OUTPUT_FILE_OVERRIDE"]:
-            i = 0
+            i: int = 0
             while i < 101:
                 if exists(self()["OUTPUT_FILE"]):
                     self()["OUTPUT_FILE"] = self()["OUTPUT_FILE"] + "_1"
@@ -189,6 +204,7 @@ class MazeInit():
                                       "please make your folder clean")
 
     def data_validation(self) -> None:
+        """ main data validation process """
 
         # ----------------------------------- SIZE CHECK
         self()["WIDTH"] = self.value_check(self()["WIDTH"], "WIDTH")

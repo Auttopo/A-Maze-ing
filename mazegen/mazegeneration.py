@@ -49,7 +49,7 @@ class MazeGenerator:
             random.seed(config["SEED"])
             seed = config["SEED"]
         else:
-            seed = random.randint(0, 10**4000)
+            seed = random.randint(0, 10**40)
             random.seed(seed)
 
         # ------------------------------------------ PRIME LIST SETUP

@@ -75,7 +75,6 @@ class MazeGenerator:
         print("Entry :", config["ENTRY"])
         print("Exit :", config["EXIT"])
 
-
         if not no_gen:
             self.generate(self.config["SHAPE"])
 
@@ -756,7 +755,6 @@ class MazeGenerator:
             self.pos_x -= 1
             self.pos_y -= 1
             i += 1
-
 
     def draw_cube(self) -> None:
         """ draw a cube on the maze area in the current location """

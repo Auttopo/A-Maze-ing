@@ -1,5 +1,5 @@
 import random
-from typing import Any, Callable
+from typing import Any
 from mlx import Mlx
 from mazegen import MazeInit
 from mazegen import MazeGenerator
@@ -52,7 +52,7 @@ class DisplayMaze:
 
     def initialize_display_settings(self) -> None:
         """Initialize mlx and window's settings"""
-        self.m = Mlx()
+        self.m: Mlx = Mlx()
         self.mlx_ptr: Any = self.m.mlx_init()
         self.calculate_img_values()
 
@@ -77,6 +77,7 @@ class DisplayMaze:
                 self.m.mlx_get_data_addr(self.img)
             )
             self.menu_settings()
+            self.regenerate: bool
             self.draw()
         except Exception as e:
             print(e)
@@ -115,33 +116,37 @@ class DisplayMaze:
         if (wdw_size > 1):
             self.printable = False
 
-        self.w_img = self.column * (self.cell_size + self.wall) + self.wall
-        self.h_img = self.rows * (self.cell_size + self.wall) + self.wall
+        self.w_img: int = self.column * (
+                self.cell_size + self.wall) + self.wall
+        self.h_img: int = self.rows * (
+                self.cell_size + self.wall) + self.wall
         self.w_wdw = self.w_img + 20
         self.h_wdw = self.h_img + 20 + self.h_menu
         if self.w_wdw > int(self.w * wdw_size):
             self.w_wdw = int(self.w * wdw_size)
         if self.h_wdw > int(self.h * wdw_size):
             self.h_wdw = int(self.h * wdw_size)
-        self.w_offset = int((self.w_wdw - self.w_img) / 2)
-        self.h_offset = int((self.h_wdw - self.h_menu - self.h_img) / 2)
+        self.w_offset: int = int((self.w_wdw - self.w_img) / 2)
+        self.h_offset: int = int((self.h_wdw - self.h_menu - self.h_img) / 2)
 
     def menu_settings(self) -> None:
         """Create and print the menu in the window"""
-        single_char = 6
-        h_menu = self.h_wdw - self.h_menu
-        color = 0xFFFFFF
-        options = [
+        single_char: int = 6
+        h_menu: int = self.h_wdw - self.h_menu
+        color: int = 0xFFFFFF
+        options: list[str] = [
             "1: Regenerate",
             "2: Path",
             "3: Wall color",
             "4: Exit"
             ]
-        space_menu = int(
+        space_menu: int = int(
             (self.w_wdw -
              (single_char * sum([len(element) for element in options]))) /
             (len(options) + 1)
         )
+        i: int
+        position: int
         for i in range(0, len(options)):
             if not i == 0:
                 position = (i + 1) * space_menu + single_char * sum(
@@ -159,6 +164,13 @@ class DisplayMaze:
 
     def draw_walls(self, color: tuple[int, int, int, int]) -> None:
         """Draw the walls of the maze"""
+        x: int
+        y: int
+        i: int
+        j: int
+        k: int
+        cell: int
+        offset: int
         for x in range(0, self.column):
             for y in range(0, self.rows):
                 cell = self.cells[y][x]
@@ -221,6 +233,10 @@ class DisplayMaze:
                         y: int,
                         color: tuple[int, int, int, int]) -> None:
         """Color forty-two's symbol to the same color of walls"""
+        i: int
+        j: int
+        k: int
+        offset: int
         for i in range(self.wall, self.cell_size):
             for j in range(self.wall, self.cell_size):
                 offset = (
@@ -237,6 +253,10 @@ class DisplayMaze:
                     y: int,
                     color: tuple[int, int, int, int]) -> None:
         """Color the inside of a cell"""
+        i: int
+        j: int
+        k: int
+        offset: int
         for i in range(self.wall, self.cell_size + self.wall):
             for j in range(self.wall, self.cell_size + self.wall):
                 offset = (
@@ -253,11 +273,10 @@ class DisplayMaze:
                      direction: str,
                      color: tuple[int, int, int, int]) -> None:
         """Color the inside of a cell"""
-        i_start = 0
-        i_end = 0
-        j_start = 0
-        j_end = 0
-
+        i_start: int = 0
+        i_end: int = 0
+        j_start: int = 0
+        j_end: int = 0
         if direction == 'N':
             i_start = self.wall * 2
             i_end = self.cell_size
@@ -282,6 +301,10 @@ class DisplayMaze:
             j_start = self.wall * 2
             j_end = self.cell_size
 
+        i: int
+        j: int
+        k: int
+        offset: int
         for i in range(i_start, i_end):
             for j in range(j_start, j_end):
                 offset = (
@@ -300,11 +323,10 @@ class DisplayMaze:
                     direction: str,
                     color: tuple[int, int, int, int]) -> None:
         """ draw the path on a normal situation """
-        i_start = 0
-        i_end = 0
-        j_start = 0
-        j_end = 0
-
+        i_start: int = 0
+        i_end: int = 0
+        j_start: int = 0
+        j_end: int = 0
         if direction == 'N':
             i_start = self.wall * 2
             i_end = self.cell_size
@@ -333,6 +355,10 @@ class DisplayMaze:
             j_end = self.cell_size
             x -= 1
 
+        i: int
+        j: int
+        k: int
+        offset: int
         for i in range(i_start, i_end):
             for j in range(j_start, j_end):
                 offset = (
@@ -351,11 +377,10 @@ class DisplayMaze:
                     direction: str,
                     color: tuple[int, int, int, int]) -> tuple[int, int]:
         """ draw the path on the fist case """
-        i_start = 0
-        i_end = 0
-        j_start = 0
-        j_end = 0
-
+        i_start: int = 0
+        i_end: int = 0
+        j_start: int = 0
+        j_end: int = 0
         if direction == 'N':
             i_start = self.wall * 2
             i_end = self.cell_size
@@ -384,6 +409,10 @@ class DisplayMaze:
             j_end = self.cell_size
             x -= 1
 
+        i: int
+        j: int
+        k: int
+        offset: int
         for i in range(i_start, i_end):
             for j in range(j_start, j_end):
                 offset = (
@@ -403,11 +432,10 @@ class DisplayMaze:
                     direction: str,
                     color: tuple[int, int, int, int]) -> None:
         """ draw the path on the last case """
-        i_start = 0
-        i_end = 0
-        j_start = 0
-        j_end = 0
-
+        i_start: int = 0
+        i_end: int = 0
+        j_start: int = 0
+        j_end: int = 0
         if direction == 'N':
             i_start = self.wall * 2
             i_end = self.cell_size
@@ -436,6 +464,10 @@ class DisplayMaze:
             j_end = self.cell_size
             x -= 1
 
+        i: int
+        j: int
+        k: int
+        offset: int
         for i in range(i_start, i_end):
             for j in range(j_start, j_end):
                 offset = (
@@ -451,6 +483,7 @@ class DisplayMaze:
         """Draw the forty-two symbol's walls"""
         x: int = int(self.rows / 2)
         y: int = int(self.column / 2)
+        i: int
         for i in range(1, 4):
             self.color_forty_two(x, y + i, color)
             self.color_forty_two(x - 2, y + i, color)
@@ -468,8 +501,8 @@ class DisplayMaze:
 
     def draw_the_path(self, color: tuple[int, int, int, int]) -> None:
         """Draw or undraw the path between the entry to the exit"""
-        x = self.entry[0]
-        y = self.entry[1]
+        x: int = self.entry[0]
+        y: int = self.entry[1]
 
         if self.path_visible:
             color = (0, 0, 0, 255)
@@ -483,6 +516,7 @@ class DisplayMaze:
 
         x, y = self.color_first_path_case(x, y, self.path[0], color)
 
+        i: str
         for i in self.path[1:-1]:
             if i == "N":
                 self.color_a_case(x, y - 1, 'N', color)
@@ -501,7 +535,11 @@ class DisplayMaze:
 
     def clean_image(self) -> None:
         """Reinitialize the image to a black backscreen"""
-        color = (0, 0, 0, 255)
+        color: tuple[int, int, int, int] = (0, 0, 0, 255)
+        x: int
+        y: int
+        k: int
+        offset: int
         for x in range(self.h_img):
             for y in range(self.w_img):
                 offset = x * self.size_line + y * (self.bit_per_pixel // 8)
@@ -581,8 +619,8 @@ class DisplayMaze:
             self.data, self.bit_per_pixel, self.size_line, the_format = (
                 self.m.mlx_get_data_addr(self.img)
             )
-            init = MazeInit('config.txt')
-            maze = MazeGenerator(init())
+            init: MazeInit = MazeInit('config.txt')
+            maze: MazeGenerator = MazeGenerator(init())
             maze.resolve()
             self.initialize_maze_settings(
                 maze.array, maze.road,

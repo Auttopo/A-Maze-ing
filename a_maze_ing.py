@@ -13,9 +13,9 @@ def main() -> None:
         if len(sys.argv) < 2:
             raise MazeConfigError("Use as first argument a configuration file")
         init: dict[str, Any] = MazeInit(sys.argv[1])()
-        maze = MazeGenerator(init)
+        maze: MazeGenerator = MazeGenerator(init)
         maze.resolve()
-        screen = DisplayMaze(
+        screen: DisplayMaze = DisplayMaze(
                 maze.array, maze.road, init['ENTRY'], init['EXIT'])
         screen.initialize_display_settings()
         maze.create_file()

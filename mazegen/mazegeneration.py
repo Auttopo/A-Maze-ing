@@ -54,6 +54,7 @@ class MazeGenerator:
 
         # ------------------------------------------ PRIME LIST SETUP
 
+        i: int
         for i in range(config["HEIGHT"]):
             self.prime_list[i][-1] = False
 
@@ -105,6 +106,8 @@ class MazeGenerator:
     def create_string(self) -> str:
         """ create the hexadecimal maze string """
         out: list[str] = []
+        elem: list[int]
+        num: int
         for elem in self.array:
             for num in elem:
                 out.append(str("{0:x}".format(num)).capitalize())
@@ -364,6 +367,8 @@ class MazeGenerator:
 
         x: int
         y: int
+        i: int
+        elem: tuple[int, int]
         for i, elem in enumerate(start_agents, start=1):
             x, y = elem
             agents[y][x] = i
@@ -609,6 +614,7 @@ class MazeGenerator:
         if self.pos_x <= -10 and self.pos_y <= -10:
             return False
 
+        i: int
         for i in range(size_x):
             self.draw_x()
             self.pos_x += 1
@@ -689,6 +695,7 @@ class MazeGenerator:
         self.pos_x = 0
         self.pos_y = 0
 
+        elem: list[int]
         for elem in self.array:
             i: int = 0
             while i < len(elem):

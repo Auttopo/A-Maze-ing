@@ -7,6 +7,7 @@ install:
 	pip install --upgrade pip && \
 	pip install -r requirements.txt && \
 	pip install mlx-2.2-py3-none-any.whl
+	mkdir -p generated_mazes_file
 
 build:
 	. maze_env/bin/activate && \

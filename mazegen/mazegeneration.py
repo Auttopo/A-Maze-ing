@@ -68,13 +68,12 @@ class MazeGenerator:
             self.array[config["HEIGHT"] - 1][i] += 0b0100
 
         # ------------------------------------------- GENERATE
-        
-        print("seed used :", seed)
-        print("shape used :", config["SHAPE"])
-        print("is perfect :", config["PERFECT"])
-        print("entry :", config["ENTRY"])
-        print("exit :", config["EXIT"])
 
+        print("Seed used :", seed)
+        print("Shape used :", config["SHAPE"])
+        print("Is perfect :", config["PERFECT"])
+        print("Entry :", config["ENTRY"])
+        print("Exit :", config["EXIT"])
 
         if not no_gen:
             self.generate(self.config["SHAPE"])
@@ -756,7 +755,6 @@ class MazeGenerator:
             self.pos_x -= 1
             self.pos_y -= 1
             i += 1
-
 
     def draw_cube(self) -> None:
         """ draw a cube on the maze area in the current location """

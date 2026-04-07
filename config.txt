@@ -1,9 +1,8 @@
-WIDTH=200
-HEIGHT=100
-ENTRY=1,1
-EXIT=199,99
-OUTPUT_FILE=maze.txt
-OUTPUT_FILE_OVERRIDE=True
+WIDTH=120
+HEIGHT=20
+ENTRY=Random
+EXIT=Random
+OUTPUT_FILE=generated_mazes_file/maze.txt
 PERFECT=False
-SHAPE=Circle
+SHAPE=Random
 SEED=Random
